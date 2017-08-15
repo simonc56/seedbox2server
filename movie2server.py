@@ -2,20 +2,20 @@
 # -*- coding:utf-8 -*-
 
 # movie2server.py
-# Système de gestion des films copiés vers XBMC
+# Système de gestion des films copiés vers la bdd Kodi
 # 29/01/2013 v1
+# 16/04/2017 v2 pour linux
 #
 #todo : afficher la progression de la copie (%age)
 
 from datetime import datetime
-import os.path
-import glob
+import os
 import sys
 import re
 import shutil
 
-chemin_films  = "O:\\Films\\"
-chemin_series = "O:\\Series\\"
+chemin_films  = "/media/tera/films"
+chemin_series = "/media/tera/series"
 display = "tout" # tout / nouveaux
 
 def horodate():
@@ -30,19 +30,19 @@ class unFilm():
         self.nom_complet = nom
         self.nom_propre = "0"
         self.date = date
-        chemin = nom.split("\\")
-        self.origine = "\\".join(chemin[:-1])
+        chemin = nom.split("/")
+        self.origine = "/".join(chemin[:-1])
         self.titre = chemin[-1]
         self.sortie = chemin_desti
         # verifions si c'est un épisode de série tv
         self.tv = False
-        season, episode = unFilm.testSerie(self.titre)
+        season, episode = self.testSerie(self.titre)
         if (season, episode) != (-1, -1):
             self.season = int(season)
             self.episode = int(episode)
             self.tv = True
 
-    def testSerie(titre):
+    def testSerie(self, titre):
         """Parse le nom du fichier pour savoir
         si c'est un épisode de série tv.
         Renvoie True si c'est le cas."""
@@ -84,16 +84,15 @@ class unFilm():
                     print("! trouvé ! "+serie)
                 ok = 0
             if self.nom_propre == "0":
-                self.nom_propre = input("Nom de la série: ")
-                self.sortie = chemin_series+self.nom_propre+"\\season "+str(self.season)+"\\"
+                self.nom_propre = raw_input("Nom de la série: ")
+                self.sortie = chemin_series+self.nom_propre+"/season "+str(self.season)+"/"
                 return "serie" #indique qu'il faudra créer le répertoire de la série
-            if ("season "+str(self.season)) not in os.listdir(chemin_series+self.nom_propre):
+            if ("season "+str(self.season)) not in os.listdir(chemin_series+"/"+self.nom_propre):
                 return "season" #indique qu'il faudra créer le répertoire de la saison
-            self.sortie = chemin_series+self.nom_propre+"\\season "+str(self.season)+"\\"
+            self.sortie = chemin_series+self.nom_propre+"/season "+str(self.season)+"/"
             return "ok"
         else: #film classique
-            self.nom_propre = input("Nom du film : ")
-            self.sortie = chemin_films+self.nom_propre+"\\"
+            self.sortie = chemin_films+"/"
             return "film" # indique qu'il faudra créer le répertoire du film
 
 
@@ -106,27 +105,27 @@ class unFilm():
         creer = self.definirSortie()
         if creer == "serie":
             os.mkdir(chemin_series+self.nom_propre)
-            os.mkdir(chemin_series+self.nom_propre+"\\season "+str(self.season))
+            os.mkdir(chemin_series+self.nom_propre+"/season "+str(self.season))
         if creer == "season":
-            os.mkdir(chemin_series+self.nom_propre+"\\season "+str(self.season))
+            os.mkdir(chemin_series+self.nom_propre+"/season "+str(self.season))
         if creer == "film":
-            os.mkdir(chemin_films+self.nom_propre)
-        ecrase = "o"
+            #os.mkdir(chemin_films+self.nom_propre)
+            ecrase = "o"
         if self.titre in os.listdir(self.sortie):
-            ecrase = input("Fichier déjà existant, écraser? (O/n) ")
+            ecrase = raw_input("Fichier déjà existant, écraser? (O/n) ")
         if ecrase != 'n':
             print("\nDE   "+self.nom_complet)
             print("VERS "+self.sortie)
-            valide = input("ok? (O/n) ")
+            valide = raw_input("ok? (O/n) ")
             if valide != "n":
                 deb = datetime.now()
                 print(deb.strftime("%H:%M:%S")+" Copie en cours...")
                 shutil.copyfile(self.nom_complet, self.sortie+self.titre)
                 fin = datetime.now()
                 delai = fin - deb
-                input(fin.strftime("%H:%M:%S")+" Copie terminée en "+str(delai.seconds//60)+" minutes. (entrée)")
+                raw_input(fin.strftime("%H:%M:%S")+" Copie terminée en "+str(delai.seconds//60)+" minutes. (entrée)")
                 return
-        input("Ok, on ne copie pas. (entrée)")
+        raw_input("Ok, on ne copie pas. (entrée)")
             
 
 #fin-class-unFilm------------------------------------------
@@ -152,11 +151,11 @@ class uneArchive():
             print("Fichier de sauvegarde non trouvé!")
             try:
                 with open(file_sauv,"w") as file:
-                    input("On en crée un nouveau. (entrée)")
+                    raw_input("On en crée un nouveau. (entrée)")
                 self.writable = True
             except IOError:
                 print("Et impossible de le créer ici: "+file_sauv)
-                input("Il n'y aura pas de sauvegarde des actions faites. (entrée)")
+                raw_input("Il n'y aura pas de sauvegarde des actions faites. (entrée)")
                 self.writable = False
 
     def __repr__(self):
@@ -210,7 +209,7 @@ def trouverSeries(chemin):
     try:
         return os.listdir(chemin)
     except IOError:
-        input("Erreur !\nAccès impossible au dossier XBMC !")
+        raw_input("Erreur !\nAccès impossible au dossier des séries !")
         exit()
 
 def getpath():
@@ -226,35 +225,32 @@ def getfilms(chemin):
     dans le répertoire passé en argument."""
     #recuperation des noms de fichiers
     fichiers = []
-    liste = glob.glob(chemin+"\\*")
-    for file in liste:
-        if os.path.isdir(file):
-            fichiers.extend(getfilms(file))
-        else:
-            fichiers.append(file)
+    for root, dirnames, filenames in os.walk(chemin):
+        for filename in filenames:
+            fichiers.append(os.path.join(root, filename))
     # reg expr. des extensions de films
     filmext=re.compile('(avi|mkv|mp4|mpg|m4v)$')
     films = [fich for fich in fichiers if filmext.search(fich)]
     return films
 
 def afficherTitre():
-    print("────────────────────────┤ Movie to XBMC ├───────────────────────")
+    print("───────────────────────────────────────┤ Movie to Kodi ├──────────────────────────────────────")
 
 def afficherFilms(films, chemin):
     if display == "nouveaux":
         print("\nContenu de "+chemin+" :\n")
     else:
         print("\nNouveau contenu de "+chemin+" :\n")
-    print("───┬──────────────────┬─────────────────────────────────────────")
+    print("───┬──────────────────┬───────────────────────────────────────────────────────────────────────")
     print("N° │ Date de copie    │ Fichier vidéo")
-    print("───┼──────────────────┼─────────────────────────────────────────")
+    print("───┼──────────────────┼───────────────────────────────────────────────────────────────────────")
     titre_brut = [i.titre for i in films if display == "nouveaux" or i.date == "                "]
     date_brut = [i.date for i in films if display == "nouveaux" or i.date == "                "]
     n = 1
     for titre in titre_brut:
         print(str(n).zfill(2)+" │ "+date_brut[n-1]+" │ "+titre)
         n += 1
-    print("───┴──────────────────┴─────────────────────────────────────────")
+    print("───┴──────────────────┴───────────────────────────────────────────────────────────────────────")
     return titre_brut
     
 
@@ -271,13 +267,13 @@ def daterFilms(liste, archive):
 
 def menu(titres, archive, display, films_rep_courant):
     """Affiche le menu interactif pour l'utilisateur."""
-    print("\n1 - Copier vers XBMC")
+    print("\n1 - Copier vers Kodi")
     print("2 - Afficher "+display)
     print("3 - Déclarer comme déjà copié")
     print("4 - Sauver et Quitter\n")
-    c = input("Choix: ")
+    c = raw_input("Choix: ")
     if c == "1":
-        num = input("Lequel: ")
+        num = raw_input("Lequel: ")
         nums = [int(i) for i in re.split("\W+", num)]
         for i in nums:
             if i > len(titres):
@@ -290,7 +286,7 @@ def menu(titres, archive, display, films_rep_courant):
     elif c == "2":
         display = switchDisplay(display)
     elif c == "3": # déclarer comme déjà copié
-        num = input("Lequel: ")
+        num = raw_input("Lequel: ")
         nums = [int(i) for i in re.split("\W+", num)]
         for i in nums:
             if i > len(titres):
@@ -317,9 +313,10 @@ def switchDisplay(display):
 
 #### MAIN ####
 # 1. on récupère le chemin courant
-chemin = getpath()
+#chemin = getpath()
+chemin = "/storage/videos"
 # 2. on récupère la sauvegarde
-chemin_sauv = chemin+"\\movies.cfg"
+chemin_sauv = chemin+"/movies.cfg"
 archive = uneArchive(chemin_sauv)
 touch = 0 #sert à verifier si l'archive change
 # 3. On récupère la liste des films du répertoire courant
@@ -328,7 +325,7 @@ films_rep_courant = [unFilm(item) for item in liste_brute]
 # 4. On date ceux qui sont déjà copiés
 daterFilms(films_rep_courant, archive.list)
 # 5. On affiche les films
-os.system("cls")
+os.system("clear")
 afficherTitre()
 affich = afficherFilms(films_rep_courant, chemin)
 # 6. On récupère la liste des séries tv dispo en sortie
@@ -338,7 +335,7 @@ c = 1
 while c != "4":
     c, display = menu(affich, archive, display, films_rep_courant)
     if c == "1" or c == "2" or c =="3":
-        os.system("cls")
+        os.system("clear")
         afficherTitre()
         if c != 2:
             daterFilms(films_rep_courant, archive.list)
@@ -347,4 +344,3 @@ while c != "4":
 print("\n--fin")
 
 #--EOF
-
