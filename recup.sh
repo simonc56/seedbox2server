@@ -181,6 +181,9 @@ while true ; do
           #goodname="${name// /.}"
           goodname=$(echo "$name" | sed 's/  */\./g')
           if [ $no_space == 1 ] && [ "$name" != "$goodname" ] ; then
+            #enlever ([.-.
+            goodname=${goodname//[\(\)\[\]]/}
+            goodname=${goodname//.-./.}
             goodname_file="${chemin}${goodname}" 
             mv "$file" "${goodname_file}"
           else
