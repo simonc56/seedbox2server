@@ -172,7 +172,7 @@ while true ; do
         #enleve /* de fin, si le torrent est un fichier seul
         file="${file%/\*}"
         name=${file##*/}
-        chemin="${file/$name}"
+        chemin=${file%/*}'/'
         ext=${file##*.}
         echo "film file=$file" >> "$RECUPLOG"
         if [ "${EXTENSIONS/$ext}" != "$EXTENSIONS" ] && [ -f "$file" ] && [ "${name%.*}" != "sample" ] ; then
@@ -184,7 +184,9 @@ while true ; do
             #enlever ([.-.
             goodname=${goodname//[\(\)\[\]]/}
             goodname=${goodname//.-./.}
-            goodname_file="${chemin}${goodname}" 
+            goodname=`echo $goodname | tr -s '.'`
+            goodname=${goodname#.}
+            goodname_file="${chemin}${goodname}"
             mv "$file" "${goodname_file}"
           else
             goodname_file="$file"
