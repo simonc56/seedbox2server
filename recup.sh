@@ -1,5 +1,5 @@
 #!/bin/sh
-#
+# 1.1.0
 # recuperation de fichiers sur serveur ftp, il faut sshpass et sftp
 # les fichiers distants doivent se telecharger dans une arborescence
 # /home/bla/bla/torrents/<label>/<torrent_name>/
@@ -9,20 +9,23 @@
 # principe: un batch file est ecrit puis lance par sftp
 # si erreur de dl voir recup.log et contenu de .histo
 
+# extensions dans répertoire .histo :
+# hst     = torrent à récupérer
+# hstok   = torrent récupéré
+# hsterr  = torrent erreur de récup (erreur de dl avec sftp)
+# -> répertoire /tmp/.histo  = récup en attente, quand script tourne déjà
+
 # VARIABLES IMPORTANTES :
-serveur='***@server.com'
-racine_ftp='/home/***/'
-export SSHPASS='******'
-BASE_STORE="/**/downloads"
-FILMS_DIR="/**/films/"
-histo='watch'
-histo_local='/storage'
+BASE_STORE="/media/tera/downloads"
+FILMS_DIR="/media/tera/films/"
+histo='watch' #dans quel rép distant est rangé .histo
+histo_local='/storage' #dans quel rép local...
 LOCK="$histo_local"/recup.lock
+RECUPLOG="$histo_local"/recup.log
 b="$histo_local"/.batch-hst   # batch de recup des .hst
 b2="$histo_local"/.batch-dl   # batch de dl des fichiers torrents
 b3="$histo_local"/.batch-tmp  # batch de recup des hst en tmp
 EXTENSIONS="mkv,avi,mp4,m4v,iso,mpg,srt"
-WEBHOOK_URL="https://hooks.slack.com/services/************"
 botname="Téléchargé"
 boticon=":clapper:"
 botname="\\\"username\\\":\\\"$botname\\\","
@@ -30,13 +33,34 @@ boticon="\\\"icon_emoji\\\":\\\"$boticon\\\","
 cmd_ftp="/storage/sshpass -e sftp -oBatchMode=no -b"
 no_space=1 # option pr remplacer espaces par . dans noms de fichiers films et series
 
-# extensions dans répertoire .histo :
-# hst     = torrent à récupérer
-# hstok   = torrent récupéré
-# hsterr  = torrent erreur de récup (erreur de dl avec sftp)
-# -> répertoire /tmp/.histo  = récup en attente, quand script tourne déjà
+# VARIABLES PERSO LUES DANS secrets.yml (indentation yaml remplacée par _):
+# seedbox_uri="https://seedbox.com/plugins/httprpc/action.php"
+# seedbox_usr
+# seedbox_pwd
+# seedbox_path="/home/me/torrents/films"
+# seedbox_ftp_host="serv.seedbox.com"
+# seedbox_ftp_root="/home/me/"
+# slack_hook_url="https://hooks.slack.com/services/************"
 
-RECUPLOG="$histo_local"/recup.log
+function parse_yaml {
+   local prefix=$2
+   local s='[[:space:]]*' w='[a-zA-Z0-9_]*' fs=$(echo @|tr @ '\034')
+   sed -ne "s|^\($s\):|\1|" \
+        -e "s|^\($s\)\($w\)$s:$s[\"']\(.*\)[\"']$s\$|\1$fs\2$fs\3|p" \
+        -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p"  $1 |
+   awk -F$fs '{
+      indent = length($1)/2;
+      vname[indent] = $2;
+      for (i in vname) {if (i > indent) {delete vname[i]}}
+      if (length($3) > 0) {
+         vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
+         printf("%s%s%s=\"%s\"\n", "'$prefix'",vn, $2, $3);
+      }
+   }'
+}
+eval $(parse_yaml secrets.yml)
+serveur="$seedbox_usr@$seedbox_ftp_host"
+export SSHPASS="$seedbox_pwd"
 now="$(date +%d.%m.%Y-%Hh%Mm%S)"
 heure="$(date +%Hh%Mm%S)"
 echo "-----------" $now "-----------" >> "$RECUPLOG"
@@ -89,12 +113,12 @@ while true ; do
     if [ "$DIR" != "torrents" ] ; then
       STORE="$STORE/$DIR"
     fi
-    rep=${rep#$racine_ftp}
+    rep=${rep#$seedbox_ftp_root}
     echo "get -r" "\"$rep\"" "\"$STORE\"" >> $b2
     # Notify slack
     text="$NAME"
     payload="payload={$boticon$botname\\\"text\\\":\\\"$text\\\"}"
-    echo "!curl -s --data-urlencode \"$payload\" \"$WEBHOOK_URL\" > /dev/null 2>> \"$RECUPLOG\"" >> $b2
+    echo "!curl -s --data-urlencode \"$payload\" \"$slack_hook_url\" > /dev/null 2>> \"$RECUPLOG\"" >> $b2
     #ne pas supprimer le hst sinon prochaine boucle ne marche pas, renommer en .hstok
     echo "!mv \"$file\" \"${file}ok\"" >> $b2
     if [ "$DIR" == "films" ] || [ "$DIR" == "series" ] ; then
@@ -124,7 +148,7 @@ while true ; do
       hst_file=${file##*/}
       mv "$file" "$file"err
       echo "$heure ---> transfert interrompu" >> "$RECUPLOG"
-      curl -s --data-urlencode "payload={\"icon_emoji\":\":heavy_exclamation_mark:\",\"username\":\"Erreur\",\"text\":\"$fautif\"}" "$WEBHOOK_URL" > /dev/null 2>&1
+      curl -s --data-urlencode "payload={\"icon_emoji\":\":heavy_exclamation_mark:\",\"username\":\"Erreur\",\"text\":\"$fautif\"}" "$slack_hook_url" > /dev/null 2>&1
       break # erreur seulement sur le premier .hst restant
     fi
   done
