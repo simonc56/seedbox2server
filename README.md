@@ -1,8 +1,10 @@
 ## Automatisation pour seedbox : recup.sh, notify.sh & netcat.sh
 
-Téléchargement auto des contenus de la seedbox vers la maison
+Téléchargement auto des contenus de la seedbox vers la maison.
 
-recup et netcat sont sur le pc maison, notify est sur la seedbox
+__recup__ et __netcat__ sont sur le pc maison, __notify__ est sur la seedbox.
+
+Aucune dépendance, fonctionne uniquement avec le shell et le binaire sshpass. Testé sur LibreElec 8.2.
 
 ### netcat.sh
 
