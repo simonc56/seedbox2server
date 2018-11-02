@@ -1,10 +1,12 @@
-## Automatisation pour seedbox : notify.sh, netcat.sh & recup.sh
+## Synchro automatique seedbox/maison avec lftp
 
-Téléchargement auto des contenus de la seedbox vers la maison.
+Téléchargement ftp des contenus de seedbox vers la maison.
 
-__notify__ est sur la seedbox, __netcat__ et __recup__ sont sur le pc maison.
+Principe : 3 scripts shell communiquent entre eux pour déclencher la synchro à chaque fois qu'un torrent se termine.
 
-Aucune dépendance, fonctionne uniquement avec le shell et le binaire sshpass. Testé sur LibreElec 8.2.
+__notify__ est sur la/les seedbox, __netcat__ et __recup__ sont sur le pc/serveur à la maison.
+
+Fonctionne avec lftp. Testé sur LibreElec 8.2.
 
 ### notify.sh
 
@@ -20,9 +22,10 @@ netcat ouvre un port sur la machine maison en attente d'une requête http
 
 ### recup.sh
 
-lancé manuellement ou par netcat.sh, il se connecte en ftp à la seedbox, vérifie si des téléchargements sont complétés (présence de fichiers .histo) et les rapatrie en ftp
+lancé par netcat.sh (ou à la main ou par cron si vous voulez), il se connecte en ftp à la seedbox concernée, vérifie si des téléchargements sont complétés (présence de fichiers .histo) et les rapatrie en ftp.
 
-il y a un mécanisme qui protège des interruptions ou du lancement du script s'il tourne déjà. Une notification est envoyée (sur slack) à chaque torrent rappatrié.
+Une notification est envoyée (sur slack) à chaque torrent rapatrié. Pas de connexion inutile au serveur toutes les x heures pour "vérifier", la connexion ftp est déclenchée uniquement si un téléchargement se termine sur la seedbox.
+Capable d'utiliser les protocoles ftp, ftps, sftp et de gérer plusieurs seedbox.
 
 
 ## [obsolète] Garder un historique des copies manuelles : movie2server.py
