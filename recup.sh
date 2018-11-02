@@ -21,7 +21,7 @@
 SECRETS="/storage/.config/flexget/secrets.yml"
 BASE_STORE="/media/tera/downloads"
 FILMS_DIR="/media/tera/films/"
-histo='torrents/' #dans quel rép distant est rangé .histo (car parfois impossible d'ecrire a la racine ftp)
+histo='torrents' #dans quel rép distant est rangé .histo (car parfois impossible d'ecrire a la racine ftp)
 histo_local="$HOME" #dans quel rép local est rangé .histo
 LOCK="$histo_local"/recup.lock
 RECUPLOG="$histo_local"/recup.log
@@ -79,7 +79,7 @@ if [ -f "$LOCK" ] && [ ! -z "$qui_usr" ] ; then
   echo 'lcd' $histo_local >> $b3
   # recup des fichiers histo dans temp
   echo 'mget -O' "\"$histo_local/tmp/.histo\"" "\"$histo/.histo/*.hst\"" >> $b3
-  echo 'mrm -f' $histo'.histo/*.hst' >> $b3
+  echo 'mrm -f' $histo'/.histo/*.hst' >> $b3
   echo 'exit' >> $b3
   sleep 5 # attente que script precedent efface ses .hst
   $cmd_ftp $b3
@@ -105,8 +105,8 @@ if [ ! -z "$qui_usr" ] ; then
   echo "Recup des fichiers .hst"
   echo 'open -u' $qui_usr','$qui_pwd $qui_ftp_host > $b
   echo 'lcd' $histo_local >> $b
-  echo 'mget -O' "\"$histo_local/.histo\"" "\"$histo.histo/*.hst\"" >> $b
-  echo 'mrm -f' $histo'.histo/*.hst' >> $b
+  echo 'mget -O' "\"$histo_local/.histo\"" "\"$histo/.histo/*.hst\"" >> $b
+  echo 'mrm -f' $histo'/.histo/*.hst' >> $b
   echo 'exit' >> $b
   $cmd_ftp $b
 else
