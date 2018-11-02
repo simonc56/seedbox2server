@@ -1,6 +1,8 @@
 #!/bin/sh
-# 1.1.0
-# recuperation de fichiers sur serveur ftp, il faut sshpass et sftp
+# 1.2.0
+# todo : credentials ftp dans ~/.netrc
+#        supprimer batch hst et tmp (faire en ligne de commande direct)
+# recuperation de fichiers sur serveurs ftp, il faut lftp
 # les fichiers distants doivent se telecharger dans une arborescence
 # /home/bla/bla/torrents/<label>/<torrent_name>/
 # avec tri specifique si label = films ou series
@@ -16,10 +18,11 @@
 # -> répertoire /tmp/.histo  = récup en attente, quand script tourne déjà
 
 # VARIABLES IMPORTANTES :
+SECRETS="/storage/.config/flexget/secrets.yml"
 BASE_STORE="/media/tera/downloads"
 FILMS_DIR="/media/tera/films/"
-histo='watch' #dans quel rép distant est rangé .histo
-histo_local='/storage' #dans quel rép local...
+histo='torrents/' #dans quel rép distant est rangé .histo (car parfois impossible d'ecrire a la racine ftp)
+histo_local="$HOME" #dans quel rép local est rangé .histo
 LOCK="$histo_local"/recup.lock
 RECUPLOG="$histo_local"/recup.log
 b="$histo_local"/.batch-hst   # batch de recup des .hst
@@ -30,15 +33,15 @@ botname="Téléchargé"
 boticon=":clapper:"
 botname="\\\"username\\\":\\\"$botname\\\","
 boticon="\\\"icon_emoji\\\":\\\"$boticon\\\","
-cmd_ftp="/storage/sshpass -e sftp -oBatchMode=no -b"
+cmd_ftp="lftp -f"
 no_space=1 # option pr remplacer espaces par . dans noms de fichiers films et series
 
-# VARIABLES PERSO LUES DANS secrets.yml (indentation yaml remplacée par _):
+# Variables perso lues dans le fichier SECRETS partagé avec flexget (indentation yaml remplacée par _):
 # seedbox_uri="https://seedbox.com/plugins/httprpc/action.php"
 # seedbox_usr
 # seedbox_pwd
 # seedbox_path="/home/me/torrents/films"
-# seedbox_ftp_host="serv.seedbox.com"
+# seedbox_ftp_host="ftp://serv.seedbox.com:21"
 # seedbox_ftp_root="/home/me/"
 # slack_hook_url="https://hooks.slack.com/services/************"
 
@@ -58,45 +61,82 @@ function parse_yaml {
       }
    }'
 }
-eval $(parse_yaml secrets.yml)
-serveur="$seedbox_usr@$seedbox_ftp_host"
-export SSHPASS="$seedbox_pwd"
+eval $(parse_yaml "$SECRETS")
+qui=$1 # nom de la seedbox qui nous sollicite
+qui_ftp_host=\$"$qui"_ftp_host ; qui_ftp_host=`eval echo $qui_ftp_host`
+qui_usr=\$"$qui"_usr ; qui_usr=`eval echo $qui_usr`
+qui_pwd=\$"$qui"_pwd ; qui_pwd=`eval echo $qui_pwd`
 now="$(date +%d.%m.%Y-%Hh%Mm%S)"
 heure="$(date +%Hh%Mm%S)"
 echo "-----------" $now "-----------" >> "$RECUPLOG"
 
 # verification si le script tourne deja
-if [ -f "$LOCK" ] ; then
+if [ -f "$LOCK" ] && [ ! -z "$qui_usr" ] ; then
   # OUI : on stocke en tmp et on quitte
-  mkdir "$histo_local/tmp"
+  mkdir "$histo_local"/tmp
   echo "Recup precedente pas finie, on stocke en .tmp"
-  echo 'lcd' $histo_local > $b3
+  echo 'open -u' $qui_usr','$qui_pwd $qui_ftp_host > $b3
+  echo 'lcd' $histo_local >> $b3
   # recup des fichiers histo dans temp
-  echo '-get -r' "$histo/.histo" "$histo_local"/tmp >> $b3
-  echo '-rm' $histo'/.histo/*' >> $b3
-  echo 'bye' >> $b3
+  echo 'mget -O' "\"$histo_local/tmp/.histo\"" "\"$histo/.histo/*.hst\"" >> $b3
+  echo 'mrm -f' $histo'.histo/*.hst' >> $b3
+  echo 'exit' >> $b3
   sleep 5 # attente que script precedent efface ses .hst
-  $cmd_ftp $b3 $serveur
+  $cmd_ftp $b3
   echo "et on quitte..."
   exit 0
-else
-  # NON : on verrouille
-  touch "$LOCK"
+elif [ -f "$LOCK" ] && [ -z "$qui_usr" ] ; then #pas de seedbox en arg
+  echo "Recup precedente pas finie, exit"
+  exit 0
+fi
+# NON : on verrouille
+touch "$LOCK"
+if [ ! -z "$qui_usr" ] ; then
+  #si on a recu un nom de seedbox en argument
+  #Verif config lftp. Au lancement lftp lit /etc/lftp.conf puis ~/.lftprc puis ~/.lftp/rc
+  if [ ! -f "$HOME/.lftprc" ] ; then
+    echo "Pas de fichier de config perso pour lftp, on le crée ici: ~/.lftprc" >> "$RECUPLOG"
+    echo '# fichier configuration lftp créé par recup.sh le' $now > "$HOME/.lftprc"
+    echo 'set ftp:ssl-force true' >> "$HOME/.lftprc"  #oblige password chiffré (pas les transferts)
+    echo 'set ftps:initial-prot C' >> "$HOME/.lftprc" #Data Connection Security, voir RFC4217 section 9 (Clear=pas de chiffr. ni auth.)
+    echo 'set ssl:verify-certificate false' >> "$HOME/.lftprc"
+  fi
   # et on recupere les fichiers histo
   echo "Recup des fichiers .hst"
-  echo 'lcd' $histo_local > $b
-  echo '-get -r' $histo'/.histo' $histo_local >> $b
-  echo '-rm' $histo'/.histo/*' >> $b
-  echo 'bye' >> $b
-  $cmd_ftp $b $serveur
+  echo 'open -u' $qui_usr','$qui_pwd $qui_ftp_host > $b
+  echo 'lcd' $histo_local >> $b
+  echo 'mget -O' "\"$histo_local/.histo\"" "\"$histo.histo/*.hst\"" >> $b
+  echo 'mrm -f' $histo'.histo/*.hst' >> $b
+  echo 'exit' >> $b
+  $cmd_ftp $b
+else
+  #pas de nom de seedbox, on verifie si .hst presents localement
+  for file in "$histo_local"/.histo/* ; do
+    if [ ! -f $file ] ; then
+      # pas de fichier, on quitte
+      rm "$LOCK"
+      echo "Pas de seedbox a interroger, pas de .hst : exit..."
+      exit 0
+    fi
+    hstname=${file##*/}
+    qui=${hstname%-*}
+    qui=${qui%-*} #en 2 étapes pour autoriser un 'qui' avec des -
+  done
 fi
 
+touch "$LOCK"
 nb_kodi=0
 while true ; do
   nb=0
   # preparation du batch de recup des torrents
-  echo 'lcd' $BASE_STORE > $b2
-  for file in "$histo_local"/.histo/*.hst ; do
+  #mise en place des identifiants
+  qui_ftp_host=\$"$qui"_ftp_host ; qui_ftp_host=`eval echo $qui_ftp_host`
+  qui_usr=\$"$qui"_usr ; qui_usr=`eval echo $qui_usr`
+  qui_pwd=\$"$qui"_pwd ; qui_pwd=`eval echo $qui_pwd`
+  qui_ftp_root=\$"$qui"_ftp_root ; qui_ftp_root=`eval echo $qui_ftp_root`
+  echo 'open -u' $qui_usr','$qui_pwd $qui_ftp_host > $b2
+  echo 'lcd' $BASE_STORE >> $b2
+  for file in "$histo_local"/.histo/"$qui"-*.hst ; do
     # si rien a recuperer on quitte
     if [ ! -f "$file" ] ; then
       echo "Rien a recuperer, exit..."
@@ -107,14 +147,14 @@ while true ; do
     rep=`cat $file`
     rep="${rep%/}"
     NAME=${rep##*/}
-    DIR=${rep%/*}
-    DIR=${DIR##*/}
+    FULLDIR=${rep%/*}
+    DIR=${FULLDIR##*/}
+    FULLDIR=${FULLDIR#$qui_ftp_root}
     STORE="$BASE_STORE"
     if [ "$DIR" != "torrents" ] ; then
       STORE="$STORE/$DIR"
     fi
-    rep=${rep#$seedbox_ftp_root}
-    echo "get -r" "\"$rep\"" "\"$STORE\"" >> $b2
+    echo "mirror -i" "\"$NAME\"" "\"$FULLDIR\"" "\"$STORE\"" >> $b2
     # Notify slack
     text="$NAME"
     payload="payload={$boticon$botname\\\"text\\\":\\\"$text\\\"}"
@@ -126,37 +166,38 @@ while true ; do
       echo "!kodi-send -a \"Notification(New,$NAME,10000)\"" >> $b2
     fi
   done
-  echo 'bye' >> $b2
+  echo 'exit' >> $b2
 
   heure="$(date +%Hh%Mm%S)"
-  echo "$heure ---> tentative de recup de $nb torrent-s" >> "$RECUPLOG"
+  echo "$heure ---> tentative de recup de $nb torrent-s sur $qui" >> "$RECUPLOG"
   #batch pret, recup lancee ici, patience...
   sleep 3 # attente deco cmd_ftp precedent
-  $cmd_ftp $b2 $serveur
+  $cmd_ftp $b2
   
   #verif si erreur de dl
-  echec_dl=0
   heure="$(date +%Hh%Mm%S)"
-  for file in "$histo_local"/.histo/*.hst ; do
-    # si aucun file tout est ok y a pas eu erreur de dl
+  for file in "$histo_local"/.histo/"$qui"-*.hst ; do
+    # si aucun fichier de ce serveur, tout est ok y a pas eu erreur de dl
     if [ ! -f $file ] ; then
-      echo "$heure ---> transfert bien fini" >> "$RECUPLOG"
+      echo "$heure ---> transfert depuis $qui bien fini" >> "$RECUPLOG"
     else
-      echec_dl=1
       rep=`cat $file`
       fautif=${rep##*/}
-      hst_file=${file##*/}
+      #hst_file=${file##*/} v1.2.0: à effacer
       mv "$file" "$file"err
-      echo "$heure ---> transfert interrompu" >> "$RECUPLOG"
-      curl -s --data-urlencode "payload={\"icon_emoji\":\":heavy_exclamation_mark:\",\"username\":\"Erreur\",\"text\":\"$fautif\"}" "$slack_hook_url" > /dev/null 2>&1
+      echo "$heure ---> $qui : transfert interrompu" >> "$RECUPLOG"
+      curl -s --data-urlencode "payload={\"icon_emoji\":\":heavy_exclamation_mark:\",\"username\":\"Erreur\",\"text\":\"$fautif ($qui)\"}" "$slack_hook_url" > /dev/null 2>&1
       break # erreur seulement sur le premier .hst restant
     fi
   done
 
-  # a ce stade tout est recupere en local, sauf si sftp a echoue qqpart
-  # on fait la derniere partie de complete.sh sauf qu ON BOUCLE sur les N torrents et on move au lieu de link (pas de seed a maintenir)
-  # cad repartition dans les bons repertoires si 'films' ou 'series'
+  # a ce stade tout est recupere en local, sauf si lftp a echoue qqpart
+  # on fait la derniere partie de complete.sh sauf qu'on move au lieu de link (pas de seed a maintenir)
+  # cad notifier Medusa et repartir dans les bons repertoires si 'films' ou 'series'
   for file in "$histo_local"/.histo/*.hstok ; do
+    if [ ! -f $file ] ; then
+      break
+    fi
     rep=`cat $file`
     echo "rep=$rep" >> "$RECUPLOG"
     rep="${rep%/}"
@@ -223,13 +264,13 @@ while true ; do
     fi
   done
 
-  rm "$histo_local"/.histo/*.hstok
+  rm -f "$histo_local"/.histo/*.hstok
 
-  # y a t-il eu des fichiers .hst recu dans tmp pendant la recup en cours ? ou un transfert interrompu ?
+  # y a t-il d'autres fichiers .hst ? recu dans tmp pendant la recup en cours ? ou un transfert interrompu ?
   # si oui, fichiers .hst sont sortis de tmp pour traitement
-  for file in "$histo_local"/tmp/.histo/* ; do
-    if [ ! -f $file ] && [ $echec_dl -eq 0 ] ; then
-      # pas de fichier dans tmp, pas d'echec de dl, c est donc fini
+  for file in "$histo_local"/tmp/.histo/* "$histo_local"/.histo/*.hst ; do
+    if [ ! -f $file ] ; then
+      # pas de fichier hst restant, c est donc fini
       rm "$LOCK"
       if [ $nb_kodi -gt 0 ] ; then
         # Update XBMC VideoLibrarys (je groupe les dl en un seul update)
@@ -244,6 +285,9 @@ while true ; do
     # sors le .hst de tmp
     hstname=${file##*/}
     mv "$file" "$histo_local/.histo/$hstname"
-    # si echec_dl on recommence pour traiter les probables fichiers qui devaient suivre
+    # on recommence pour traiter les autres fichiers
+    # sur quel seedbox (la boucle se terminera avec le 'qui' du dernier .hst evidemment)
+    qui=${hstname%-*}
+    qui=${qui%-*} #en 2 étapes pour autoriser un 'qui' avec des -
   done
 done
