@@ -1,7 +1,6 @@
 #!/bin/sh
 # 1.2.0
 # todo : credentials ftp dans ~/.netrc
-#        supprimer batch hst et tmp (faire en ligne de commande direct)
 # recuperation de fichiers sur serveurs ftp, il faut lftp
 # les fichiers distants doivent se telecharger dans une arborescence
 # /home/bla/bla/torrents/<label>/<torrent_name>/
@@ -14,7 +13,7 @@
 # extensions dans répertoire .histo :
 # hst     = torrent à récupérer
 # hstok   = torrent récupéré
-# hsterr  = torrent erreur de récup (erreur de dl avec sftp)
+# hsterr  = torrent erreur de récup (erreur de dl avec lftp)
 # -> répertoire /tmp/.histo  = récup en attente, quand script tourne déjà
 
 # VARIABLES IMPORTANTES :
@@ -25,22 +24,17 @@ histo='torrents' #dans quel rép distant est rangé .histo (car parfois impossib
 histo_local="$HOME" #dans quel rép local est rangé .histo
 LOCK="$histo_local"/recup.lock
 RECUPLOG="$histo_local"/recup.log
-b="$histo_local"/.batch-hst   # batch de recup des .hst
 b2="$histo_local"/.batch-dl   # batch de dl des fichiers torrents
-b3="$histo_local"/.batch-tmp  # batch de recup des hst en tmp
 EXTENSIONS="mkv,avi,mp4,m4v,iso,mpg,srt"
 botname="Téléchargé"
 boticon=":clapper:"
 botname="\\\"username\\\":\\\"$botname\\\","
 boticon="\\\"icon_emoji\\\":\\\"$boticon\\\","
-cmd_ftp="lftp -f"
 no_space=1 # option pr remplacer espaces par . dans noms de fichiers films et series
 
-# Variables perso lues dans le fichier SECRETS partagé avec flexget (indentation yaml remplacée par _):
-# seedbox_uri="https://seedbox.com/plugins/httprpc/action.php"
+# Variables perso lues dans le fichier SECRETS (indentation yaml remplacée par _):
 # seedbox_usr
 # seedbox_pwd
-# seedbox_path="/home/me/torrents/films"
 # seedbox_ftp_host="ftp://serv.seedbox.com:21"
 # seedbox_ftp_root="/home/me/"
 # slack_hook_url="https://hooks.slack.com/services/************"
@@ -63,9 +57,9 @@ function parse_yaml {
 }
 eval $(parse_yaml "$SECRETS")
 qui=$1 # nom de la seedbox qui nous sollicite
-qui_ftp_host=\$"$qui"_ftp_host ; qui_ftp_host=`eval echo $qui_ftp_host`
-qui_usr=\$"$qui"_usr ; qui_usr=`eval echo $qui_usr`
-qui_pwd=\$"$qui"_pwd ; qui_pwd=`eval echo $qui_pwd`
+qui_ftp_host=\$"$qui"_ftp_host ; qui_ftp_host=$(eval echo $qui_ftp_host)
+qui_usr=\$"$qui"_usr ; qui_usr=$(eval echo $qui_usr)
+qui_pwd=\$"$qui"_pwd ; qui_pwd=$(eval echo $qui_pwd)
 now="$(date +%d.%m.%Y-%Hh%Mm%S)"
 heure="$(date +%Hh%Mm%S)"
 echo "-----------" $now "-----------" >> "$RECUPLOG"
@@ -75,14 +69,13 @@ if [ -f "$LOCK" ] && [ ! -z "$qui_usr" ] ; then
   # OUI : on stocke en tmp et on quitte
   mkdir "$histo_local"/tmp
   echo "Recup precedente pas finie, on stocke en .tmp"
-  echo 'open -u' $qui_usr','$qui_pwd $qui_ftp_host > $b3
-  echo 'lcd' $histo_local >> $b3
   # recup des fichiers histo dans temp
-  echo 'mget -O' "\"$histo_local/tmp/.histo\"" "\"$histo/.histo/*.hst\"" >> $b3
-  echo 'mrm -f' $histo'/.histo/*.hst' >> $b3
-  echo 'exit' >> $b3
   sleep 5 # attente que script precedent efface ses .hst
-  $cmd_ftp $b3
+  lftp -u $qui_usr,$qui_pwd $qui_ftp_host <<EOF
+mget -O "$histo_local/tmp/.histo" "$histo/.histo/*.hst"
+mrm -f "$histo/.histo/*.hst"
+exit
+EOF
   echo "et on quitte..."
   exit 0
 elif [ -f "$LOCK" ] && [ -z "$qui_usr" ] ; then #pas de seedbox en arg
@@ -103,12 +96,11 @@ if [ ! -z "$qui_usr" ] ; then
   fi
   # et on recupere les fichiers histo
   echo "Recup des fichiers .hst"
-  echo 'open -u' $qui_usr','$qui_pwd $qui_ftp_host > $b
-  echo 'lcd' $histo_local >> $b
-  echo 'mget -O' "\"$histo_local/.histo\"" "\"$histo/.histo/*.hst\"" >> $b
-  echo 'mrm -f' $histo'/.histo/*.hst' >> $b
-  echo 'exit' >> $b
-  $cmd_ftp $b
+  lftp -u $qui_usr,$qui_pwd $qui_ftp_host <<EOF
+mget -O "$histo_local/.histo" "$histo/.histo/*.hst"
+mrm -f "$histo/.histo/*.hst"
+exit
+EOF
 else
   #pas de nom de seedbox, on verifie si .hst presents localement
   for file in "$histo_local"/.histo/* ; do
@@ -130,10 +122,10 @@ while true ; do
   nb=0
   # preparation du batch de recup des torrents
   #mise en place des identifiants
-  qui_ftp_host=\$"$qui"_ftp_host ; qui_ftp_host=`eval echo $qui_ftp_host`
-  qui_usr=\$"$qui"_usr ; qui_usr=`eval echo $qui_usr`
-  qui_pwd=\$"$qui"_pwd ; qui_pwd=`eval echo $qui_pwd`
-  qui_ftp_root=\$"$qui"_ftp_root ; qui_ftp_root=`eval echo $qui_ftp_root`
+  qui_ftp_host=\$"$qui"_ftp_host ; qui_ftp_host=$(eval echo $qui_ftp_host)
+  qui_usr=\$"$qui"_usr ; qui_usr=$(eval echo $qui_usr)
+  qui_pwd=\$"$qui"_pwd ; qui_pwd=$(eval echo $qui_pwd)
+  qui_ftp_root=\$"$qui"_ftp_root ; qui_ftp_root=$(eval echo $qui_ftp_root)
   echo 'open -u' $qui_usr','$qui_pwd $qui_ftp_host > $b2
   echo 'lcd' $BASE_STORE >> $b2
   for file in "$histo_local"/.histo/"$qui"-*.hst ; do
@@ -144,7 +136,7 @@ while true ; do
       exit 0
     fi
     nb=$((nb+1))
-    rep=`cat $file`
+    rep=$(cat $file)
     rep="${rep%/}"
     NAME=${rep##*/}
     FULLDIR=${rep%/*}
@@ -154,7 +146,9 @@ while true ; do
     if [ "$DIR" != "torrents" ] ; then
       STORE="$STORE/$DIR"
     fi
-    echo "mirror -i" "\"$NAME\"" "\"$FULLDIR\"" "\"$STORE\"" >> $b2
+    #echapement de tous les caracteres speciaux pour le -i de mirror
+    SPEC_NAME=$(echo $NAME | sed 's/[^[:alnum:]]/\\&/g')
+    echo "mirror -i" "\"$SPEC_NAME\"" "\"$FULLDIR\"" "\"$STORE\"" >> $b2
     # Notify slack
     text="$NAME"
     payload="payload={$boticon$botname\\\"text\\\":\\\"$text\\\"}"
@@ -172,7 +166,7 @@ while true ; do
   echo "$heure ---> tentative de recup de $nb torrent-s sur $qui" >> "$RECUPLOG"
   #batch pret, recup lancee ici, patience...
   sleep 3 # attente deco cmd_ftp precedent
-  $cmd_ftp $b2
+  lftp -f $b2
   
   #verif si erreur de dl
   heure="$(date +%Hh%Mm%S)"
@@ -181,7 +175,7 @@ while true ; do
     if [ ! -f $file ] ; then
       echo "$heure ---> transfert depuis $qui bien fini" >> "$RECUPLOG"
     else
-      rep=`cat $file`
+      rep=$(cat $file)
       fautif=${rep##*/}
       #hst_file=${file##*/} v1.2.0: à effacer
       mv "$file" "$file"err
@@ -198,7 +192,7 @@ while true ; do
     if [ ! -f $file ] ; then
       break
     fi
-    rep=`cat $file`
+    rep=$(cat $file)
     echo "rep=$rep" >> "$RECUPLOG"
     rep="${rep%/}"
     NAME=${rep##*/}
@@ -249,7 +243,7 @@ while true ; do
             #enlever ([.-.
             goodname=${goodname//[\(\)\[\]]/}
             goodname=${goodname//.-./.}
-            goodname=`echo $goodname | tr -s '.'`
+            goodname=$(echo $goodname | tr -s '.')
             goodname=${goodname#.}
             goodname_file="${chemin}${goodname}"
             mv "$file" "${goodname_file}"
