@@ -1,5 +1,5 @@
 #!/bin/sh
-#
+# 1.2.0
 # script qui ecoute sur le port **** et execute recup.sh
 # a chaque appel de notify.sh provenant de la seedbox
 # penser a ouvrir le port
@@ -16,9 +16,12 @@ do
         #NAME=${line##*=}
         #NAME=${NAME%HTTP*}
         echo "$now NETCAT A RECU: $line" >> $RECUPLOG
-        de_notif=$(echo $line | grep -c '?nom=')
+        de_notif=$(echo $line | grep -c '?from=')
         if [ $de_notif -eq 1 ]; then
-          /storage/recup.sh >> /storage/recup.log 2>&1 &
+          #donner le nom de la seedbox en argument à recup.sh
+          qui=${line%%&*}
+          qui=${qui##*=}
+          /storage/recup.sh "$qui" >> /storage/recup.log 2>&1 &
         fi
       fi
     done
