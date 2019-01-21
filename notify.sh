@@ -8,7 +8,7 @@
 # les fichiers doivent se telecharger dans une arborescence /blabla/<label>/<torrent_name>/
 
 qui="nom_seedbox"
-histo="/home/***/.histo" # chemin complet vers .histo
+histo="/home/user/torrents/lecture/.histo" # chemin complet vers .histo
 WEBHOOK_URL="https://hooks.slack.com/services/******"
 maison="http://kodi_servername:****"
 

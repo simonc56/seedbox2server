@@ -1,5 +1,5 @@
 #!/bin/sh
-# 1.2.0
+# 1.3
 # todo : credentials ftp dans ~/.netrc
 # recuperation de fichiers sur serveurs ftp, il faut lftp
 # les fichiers distants doivent se telecharger dans une arborescence
@@ -20,7 +20,7 @@
 SECRETS="/storage/.config/flexget/secrets.yml"
 BASE_STORE="/media/tera/downloads"
 FILMS_DIR="/media/tera/films/"
-histo='torrents' #dans quel rép distant est rangé .histo (car parfois impossible d'ecrire a la racine ftp)
+histo='torrents/lecture' #dans quel rép distant est rangé .histo (car parfois impossible d'ecrire a la racine ftp)
 histo_local="$HOME" #dans quel rép local est rangé .histo
 LOCK="$histo_local"/recup.lock
 RECUPLOG="$histo_local"/recup.log
@@ -262,7 +262,16 @@ while true ; do
 
   # y a t-il d'autres fichiers .hst ? recu dans tmp pendant la recup en cours ? ou un transfert interrompu ?
   # si oui, fichiers .hst sont sortis de tmp pour traitement
-  for file in "$histo_local"/tmp/.histo/* "$histo_local"/.histo/*.hst ; do
+  for file in "$histo_local"/tmp/.histo/* ; do
+    if [ -f $file ] ; then
+      # sors le .hst de tmp
+      hstname=${file##*/}
+      mv "$file" "$histo_local/.histo/$hstname"
+    else
+      break # rien dans tmp
+    fi
+  done
+  for file in "$histo_local"/.histo/*.hst ; do
     if [ ! -f $file ] ; then
       # pas de fichier hst restant, c est donc fini
       rm "$LOCK"
@@ -275,13 +284,11 @@ while true ; do
       fi
       echo "Exit..."
       exit 0
+    else
+      # sur quel seedbox (la boucle se terminera avec le 'qui' du dernier .hst trouve)
+      qui=${hstname%-*}
+      qui=${qui%-*} #en 2 étapes pour autoriser un 'qui' avec des -
     fi
-    # sors le .hst de tmp
-    hstname=${file##*/}
-    mv "$file" "$histo_local/.histo/$hstname"
-    # on recommence pour traiter les autres fichiers
-    # sur quel seedbox (la boucle se terminera avec le 'qui' du dernier .hst evidemment)
-    qui=${hstname%-*}
-    qui=${qui%-*} #en 2 étapes pour autoriser un 'qui' avec des -
   done
+  # on recommence pour traiter les autres hst
 done
