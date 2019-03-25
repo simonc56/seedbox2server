@@ -282,6 +282,13 @@ while true ; do
         sleep 2
         #kodi-send -a "UpdateLibrary(music)"
       fi
+      # verif espace disque restant, alerte si reste moins de ~9,5Go
+      disq_restant=$(df /dev/sda1 | awk '{if(NR>1)print $4}')
+      disq_restant_h=$(df -h /dev/sda1 | awk '{if(NR>1)print $4}')
+      seuil_alerte=10000000
+      if [ "$disq_restant" -lt "$seuil_alerte" ] ; then
+        curl -s --data-urlencode "payload={\"icon_emoji\":\":heavy_exclamation_mark:\",\"username\":\"Attention\",\"text\":\"Espace disque restant faible (${disq_restant_h}o)\"}" "$slack_hook_url" > /dev/null 2>&1
+      fi
       echo "Exit..."
       exit 0
     else
