@@ -1,5 +1,5 @@
 #!/bin/sh
-# 1.3
+# 1.4
 # todo : credentials ftp dans ~/.netrc
 # recuperation de fichiers sur serveurs ftp, il faut lftp
 # les fichiers distants doivent se telecharger dans une arborescence
@@ -92,6 +92,7 @@ if [ ! -z "$qui_usr" ] ; then
     echo '# fichier configuration lftp créé par recup.sh le' $now > "$HOME/.lftprc"
     echo 'set ftp:ssl-force true' >> "$HOME/.lftprc"  #oblige password chiffré (pas les transferts)
     echo 'set ftps:initial-prot C' >> "$HOME/.lftprc" #Data Connection Security, voir RFC4217 section 9 (Clear=pas de chiffr. ni auth.)
+    echo 'set sftp:auto-confirm yes' >> "$HOME/.lftprc" #Accepte automatiq la cle publique du serveur distant (mise dans .ssh/known_hosts)
     echo 'set ssl:verify-certificate false' >> "$HOME/.lftprc"
   fi
   # et on recupere les fichiers histo
