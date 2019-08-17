@@ -112,8 +112,8 @@ else
       exit 0
     fi
     hstname=${file##*/}
-    qui=${hstname%-*}
-    qui=${qui%-*} #en 2 étapes pour autoriser un 'qui' avec des -
+    qui=${hstname%_*}
+    qui=${qui%_*} #en 2 étapes pour autoriser un 'qui' avec des _
   done
 fi
 
@@ -129,7 +129,7 @@ while true ; do
   qui_ftp_root=\$"$qui"_ftp_root ; qui_ftp_root=$(eval echo $qui_ftp_root)
   echo 'open -u' $qui_usr','$qui_pwd $qui_ftp_host > $b2
   echo 'lcd' $BASE_STORE >> $b2
-  for file in "$histo_local"/.histo/"$qui"-*.hst ; do
+  for file in "$histo_local"/.histo/"$qui"_*.hst ; do
     # si rien a recuperer on quitte
     if [ ! -f "$file" ] ; then
       echo "Rien a recuperer, exit..."
@@ -193,6 +193,8 @@ while true ; do
     if [ ! -f $file ] ; then
       break
     fi
+    HASH=${file##*_}
+    HASH=${HASH%.*}
     rep=$(cat $file)
     echo "rep=$rep" >> "$RECUPLOG"
     rep="${rep%/}"
@@ -254,6 +256,8 @@ while true ; do
           mv "${goodname_file}" "${FILMS_DIR}"
         fi
       done
+      #notif radarr
+      python "/storage/radarr.py" "\"$goodname_file\"" "$HASH" >> "$RECUPLOG" 2>&1
       #effacer le rep ici
       #rm -r "$STORE/$NAME"
     fi
@@ -294,8 +298,8 @@ while true ; do
       exit 0
     else
       # sur quel seedbox (la boucle se terminera avec le 'qui' du dernier .hst trouve)
-      qui=${hstname%-*}
-      qui=${qui%-*} #en 2 étapes pour autoriser un 'qui' avec des -
+      qui=${hstname%_*}
+      qui=${qui%_*} #en 2 étapes pour autoriser un 'qui' avec des _
     fi
   done
   # on recommence pour traiter les autres hst

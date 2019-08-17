@@ -33,7 +33,7 @@ NAME=${FROM##*/}
 
 # ecriture fichier histo.hst
 now="$(date +%Y.%m.%d-%Hh%Mm%S)"
-echo $FROM > "$histo/$qui-$now.hst"
+echo $FROM > "$histo/${qui}_${now}_$HASH.hst"
 
 # parametres slack
 botname="$qui"
