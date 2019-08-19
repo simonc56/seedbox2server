@@ -251,7 +251,7 @@ while true ; do
             goodname_file="${chemin}${goodname}"
             mv "$file" "${goodname_file}"
           else
-            goodname_file="$file"
+            goodname_file="${chemin}${file}"
           fi
           mv "${goodname_file}" "${FILMS_DIR}"
         fi
