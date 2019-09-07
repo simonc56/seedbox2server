@@ -236,7 +236,7 @@ while true ; do
         name=${file##*/}
         chemin=${file%/*}'/'
         ext=${file##*.}
-        echo "film file=$file" >> "$RECUPLOG"
+        #echo "film file=$file" >> "$RECUPLOG"
         if [ "${EXTENSIONS/$ext}" != "$EXTENSIONS" ] && [ -f "$file" ] && [ "${name%.*}" != "sample" ] ; then
           # DEPLACE le fichier
           echo "film   ok=$file" >> "$RECUPLOG"
@@ -251,13 +251,15 @@ while true ; do
             goodname_file="${chemin}${goodname}"
             mv "$file" "${goodname_file}"
           else
-            goodname_file="${chemin}${file}"
+            goodname_file="${chemin}${name}"
+            goodname="${name}"
           fi
           mv "${goodname_file}" "${FILMS_DIR}"
         fi
       done
       #notif radarr
-      python "/storage/radarr.py" "\"$goodname_file\"" "$HASH" >> "$RECUPLOG" 2>&1
+      echo python "/storage/radarr.py" "${FILMS_DIR}${goodname}" "$HASH"
+      python "/storage/radarr.py" "${FILMS_DIR}${goodname}" "$HASH" >> "$RECUPLOG" 2>&1
       #effacer le rep ici
       #rm -r "$STORE/$NAME"
     fi
