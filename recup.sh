@@ -196,13 +196,16 @@ while true ; do
     HASH=${file##*_}
     HASH=${HASH%.*}
     rep=$(cat $file)
-    echo "rep=$rep" >> "$RECUPLOG"
+    #echo "rep=$rep" >> "$RECUPLOG"
     rep="${rep%/}"
     NAME=${rep##*/}
     DIR=${rep%/*}
     DIR=${DIR##*/}
     #DIR est peut-etre "torrents"
     STORE="$BASE_STORE/$DIR"
+    #pour info, on log la taille du torrent
+    tor_size=$(du -sch "$STORE/$NAME" | awk 'END{print $1}')
+    echo "$tor_size : $NAME" >> "$RECUPLOG"
     # Postprocessing vers Medusa si serie tv et recopie si film
     if [ "$DIR" == "series" ] ; then
       nb_kodi=$((nb_kodi+1))
@@ -239,7 +242,7 @@ while true ; do
         #echo "film file=$file" >> "$RECUPLOG"
         if [ "${EXTENSIONS/$ext}" != "$EXTENSIONS" ] && [ -f "$file" ] && [ "${name%.*}" != "sample" ] ; then
           # DEPLACE le fichier
-          echo "film   ok=$file" >> "$RECUPLOG"
+          #echo "film   ok=$file" >> "$RECUPLOG"
           #goodname="${name// /.}"
           goodname=$(echo "$name" | sed 's/  */\./g')
           if [ $no_space == 1 ] && [ "$name" != "$goodname" ] ; then
@@ -258,7 +261,6 @@ while true ; do
         fi
       done
       #notif radarr
-      echo python "/storage/radarr.py" "${FILMS_DIR}${goodname}" "$HASH"
       python "/storage/radarr.py" "${FILMS_DIR}${goodname}" "$HASH" >> "$RECUPLOG" 2>&1
       #effacer le rep ici
       #rm -r "$STORE/$NAME"
