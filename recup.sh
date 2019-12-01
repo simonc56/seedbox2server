@@ -15,6 +15,7 @@
 # hstok   = torrent récupéré
 # hsterr  = torrent erreur de récup (erreur de dl avec lftp)
 # -> répertoire /tmp/.histo  = récup en attente, quand script tourne déjà
+# ex. de nom de fichier : SeedboxName_2019.11.02-13h18m29_1249CF912953450897D3149DB56DF5E1431E48D1.hst
 
 # VARIABLES IMPORTANTES :
 SECRETS="/storage/.config/flexget/secrets.yml"
@@ -67,7 +68,7 @@ echo "-----------" $now "-----------" >> "$RECUPLOG"
 # verification si le script tourne deja
 if [ -f "$LOCK" ] && [ ! -z "$qui_usr" ] ; then
   # OUI : on stocke en tmp et on quitte
-  mkdir "$histo_local"/tmp
+  mkdir -p "$histo_local"/tmp/.histo
   echo "Recup precedente pas finie, on stocke en .tmp"
   # recup des fichiers histo dans temp
   sleep 5 # attente que script precedent efface ses .hst
@@ -84,6 +85,7 @@ elif [ -f "$LOCK" ] && [ -z "$qui_usr" ] ; then #pas de seedbox en arg
 fi
 # NON : on verrouille
 touch "$LOCK"
+mkdir -p "$histo_local"/.histo
 if [ ! -z "$qui_usr" ] ; then
   #si on a recu un nom de seedbox en argument
   #Verif config lftp. Au lancement lftp lit /etc/lftp.conf puis ~/.lftprc puis ~/.lftp/rc
