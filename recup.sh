@@ -150,7 +150,7 @@ while true ; do
       STORE="$STORE/$DIR"
     fi
     #echapement de tous les caracteres speciaux pour le -i de mirror
-    SPEC_NAME=$(echo $NAME | sed 's/[^[:alnum:]]/\\&/g')
+    SPEC_NAME=$(echo "$NAME" | sed 's/[^[:alnum:]]/\\&/g')
     echo "mirror -x .* -x .*/ -i '$SPEC_NAME' '$FULLDIR' '$STORE'" >> $b2
     # Notify slack
     text="$NAME"
