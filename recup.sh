@@ -27,10 +27,11 @@ LOCK="$histo_local"/recup.lock
 RECUPLOG="$histo_local"/recup.log
 b2="$histo_local"/.batch-dl   # batch de dl des fichiers torrents
 EXTENSIONS="mkv,avi,mp4,m4v,iso,mpg,srt"
-botname="Téléchargé"
-boticon=":clapper:"
-botname="\\\"username\\\":\\\"$botname\\\","
-boticon="\\\"icon_emoji\\\":\\\"$boticon\\\","
+notif_telegram=1 # 1 pour activer, 0 pour désactiver
+notif_slack=0
+slack_botname="Téléchargé"
+slack_boticon=":clapper:"
+
 no_space=1 # option pr remplacer espaces par . dans noms de fichiers films et series
 
 # Variables perso lues dans le fichier SECRETS (indentation yaml remplacée par _):
@@ -154,8 +155,15 @@ while true ; do
     echo "mirror -x .* -x .*/ -i '$SPEC_NAME' '$FULLDIR' '$STORE'" >> $b2
     # Notify slack
     text="$NAME"
+    botname="\\\"username\\\":\\\"$slack_botname\\\","
+    boticon="\\\"icon_emoji\\\":\\\"$slack_boticon\\\","
     payload="payload={$boticon$botname\\\"text\\\":\\\"$text\\\"}"
-    echo "!curl -s --data-urlencode \"$payload\" \"$slack_hook_url\" > /dev/null 2>> \"$RECUPLOG\"" >> $b2
+    if [ notif_slack = 1 ] ; then
+        echo "!curl -s --data-urlencode \"$payload\" \"$slack_hook_url\" > /dev/null 2>> \"$RECUPLOG\"" >> $b2
+    fi
+    if [ notif_telegram = 1 ] ; then
+        echo "!curl -s -X POST https://api.telegram.org/bot$telegram_token/sendMessage -d chat_id=$telegram_chat_id -d text=\"$text\" > /dev/null 2>> \"$RECUPLOG\"" >> $b2
+    fi
     #ne pas supprimer le hst sinon prochaine boucle ne marche pas, renommer en .hstok
     echo "!mv \"$file\" \"${file}ok\"" >> $b2
     if [ "$DIR" == "films" ] || [ "$DIR" == "series" ] ; then
@@ -225,7 +233,7 @@ while true ; do
                         --data-urlencode "proc_dir=$fold" \
                         --data-urlencode "proc_type=manual" \
                         --data-urlencode "quiet=1" \
-                        http://localhost:18081/home/postprocess/processEpisode 2>&1
+                        http://localhost:18081/medusa/home/postprocess/processEpisode 2>&1
           #if [ $? -eq 0 ] && [ "$fold" != "$BASE_STORE/series" ] ; then
             # si l'envoi curl a medusa a reussi, on efface le dossier
             #rm -r "$fold"
@@ -298,7 +306,12 @@ while true ; do
       disq_restant_h=$(df -h /dev/sda1 | awk '{if(NR>1)print $4}')
       seuil_alerte=10000000
       if [ "$disq_restant" -lt "$seuil_alerte" ] ; then
-        curl -s --data-urlencode "payload={\"icon_emoji\":\":heavy_exclamation_mark:\",\"username\":\"Attention\",\"text\":\"Espace disque restant faible (${disq_restant_h}o)\"}" "$slack_hook_url" > /dev/null 2>&1
+        if [ notif_slack = 1 ] ; then
+            curl -s --data-urlencode "payload={\"icon_emoji\":\":heavy_exclamation_mark:\",\"username\":\"Attention\",\"text\":\"Espace disque restant faible (${disq_restant_h}o)\"}" "$slack_hook_url" > /dev/null 2>&1
+        fi
+        if [ notif_telegram = 1 ] ; then
+            curl -s -X POST https://api.telegram.org/bot$telegram_token/sendMessage -d chat_id=$telegram_chat_id -d text="Espace disque restant faible (${disq_restant_h}o)" > /dev/null 2>&1
+        fi
       fi
       echo "Exit..."
       exit 0
