@@ -22,7 +22,7 @@ netcat ouvre un port sur la machine maison en attente d'une requête http
 
 ### recup.sh
 
-lancé par netcat.sh (ou à la main ou par cron si vous voulez), il se connecte en ftp à la seedbox concernée, vérifie si des téléchargements sont complétés (présence de fichiers .histo) et les rapatrie en ftp.
+lancé par netcat.sh (ou à la main ou par cron si on veux), il se connecte en ftp à la seedbox concernée, vérifie si des téléchargements sont complétés (présence de fichiers .histo) et les rapatrie en ftp.
 
-Une notification est envoyée (sur slack) à chaque torrent rapatrié. Pas de connexion inutile au serveur toutes les x heures pour "vérifier", la connexion ftp est déclenchée uniquement si un téléchargement se termine sur la seedbox.
+Une notification est envoyée (slack ou telegram) à chaque torrent rapatrié. Pas de connexion inutile au serveur toutes les x heures pour "vérifier", la connexion ftp est déclenchée uniquement si un téléchargement se termine sur la seedbox.
 Capable d'utiliser les protocoles ftp, ftps, sftp et de gérer plusieurs seedbox.
