@@ -158,10 +158,10 @@ while true ; do
     botname="\\\"username\\\":\\\"$slack_botname\\\","
     boticon="\\\"icon_emoji\\\":\\\"$slack_boticon\\\","
     payload="payload={$boticon$botname\\\"text\\\":\\\"$text\\\"}"
-    if [ notif_slack = 1 ] ; then
+    if [ $notif_slack == 1 ] ; then
         echo "!curl -s --data-urlencode \"$payload\" \"$slack_hook_url\" > /dev/null 2>> \"$RECUPLOG\"" >> $b2
     fi
-    if [ notif_telegram = 1 ] ; then
+    if [ $notif_telegram == 1 ] ; then
         echo "!curl -s -X POST https://api.telegram.org/bot$telegram_token/sendMessage -d chat_id=$telegram_chat_id -d text=\"$text\" > /dev/null 2>> \"$RECUPLOG\"" >> $b2
     fi
     #ne pas supprimer le hst sinon prochaine boucle ne marche pas, renommer en .hstok
@@ -306,10 +306,10 @@ while true ; do
       disq_restant_h=$(df -h /dev/sda1 | awk '{if(NR>1)print $4}')
       seuil_alerte=10000000
       if [ "$disq_restant" -lt "$seuil_alerte" ] ; then
-        if [ notif_slack = 1 ] ; then
+        if [ $notif_slack == 1 ] ; then
             curl -s --data-urlencode "payload={\"icon_emoji\":\":heavy_exclamation_mark:\",\"username\":\"Attention\",\"text\":\"Espace disque restant faible (${disq_restant_h}o)\"}" "$slack_hook_url" > /dev/null 2>&1
         fi
-        if [ notif_telegram = 1 ] ; then
+        if [ $notif_telegram == 1 ] ; then
             curl -s -X POST https://api.telegram.org/bot$telegram_token/sendMessage -d chat_id=$telegram_chat_id -d text="Espace disque restant faible (${disq_restant_h}o)" > /dev/null 2>&1
         fi
       fi
