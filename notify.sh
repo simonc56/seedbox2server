@@ -27,14 +27,14 @@ FROM="$@"
 #removes last slash
 FROM="${FROM%/}"
 
-#prend tout apres dernier slash
+#take everything after last slash
 NAME=${FROM##*/}
 
 # write .hst file
 now="$(date +%Y.%m.%d-%Hh%Mm%S)"
 echo $FROM > "$histo/${qui}_${now}_$HASH.hst"
 
-#home
+#call home (will trigger listener.sh)
 /usr/bin/curl -G -s --data-urlencode "from=$who" \
                     --data-urlencode "name=$NAME" \
                     "$home" 2>&1
