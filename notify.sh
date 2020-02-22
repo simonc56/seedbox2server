@@ -1,16 +1,15 @@
 #!/bin/sh
 # 1.2.0
-# ce fichier est sur la seedbox et est exec a chaque fin de dl
-# .rtorrent.rc doit contenir la ligne suivante :
+# this script is on the seedbox and runs at each download finish
+# .rtorrent.rc must have this line added :
 # method.set_key = event.download.finished,notif,"execute2={/home/***/notify.sh,$d.hash=,$d.base_path=}"
-# cree un historique des dl sur la seedbox et notifie chaque dl
-# historique utilise ensuite par recup.sh en local
-# les fichiers doivent se telecharger dans une arborescence /blabla/<label>/<torrent_name>/
+# creates an history (in .histo folder) of seedbox downloads and notify home server
+# history is then read by fetcher.sh
+# files must be downloaded in a path like this : /somepath/<label>/<torrent_name>/
 
-qui="nom_seedbox"
-histo="/home/user/torrents/lecture/.histo" # chemin complet vers .histo
-WEBHOOK_URL="https://hooks.slack.com/services/******"
-maison="http://kodi_servername:****"
+who="seedbox_name" # change this to a friendly name corresponding to one in config.yml
+histo="/home/user/torrents/lecture/.histo" # choose the full path to .histo, the folder in which history of finished dl will be
+home="http://servername_or_ip:port" # how to http reach your home server's listener.sh script (this is NOT ftp)
 
 if [ "$#" -lt 1 ]
 then
@@ -25,28 +24,17 @@ shift
 
 FROM="$@"
 
-#enleve le slash de fin
+#removes last slash
 FROM="${FROM%/}"
 
 #prend tout apres dernier slash
 NAME=${FROM##*/}
 
-# ecriture fichier histo.hst
+# write .hst file
 now="$(date +%Y.%m.%d-%Hh%Mm%S)"
 echo $FROM > "$histo/${qui}_${now}_$HASH.hst"
 
-# parametres slack
-botname="$qui"
-boticon=":cloud:"
-text="\`$NAME\` est téléchargé."
-botname="\"username\":\"$botname\","
-boticon="\"icon_emoji\":\"$boticon\","
-payload="payload={$boticon$botname\"text\":\"$text\"}"
-
-#slack
-#/usr/bin/curl -s --data-urlencode "$payload" "$WEBHOOK_URL" 2>&1
-
-#maison
-/usr/bin/curl -G -s --data-urlencode "from=$qui" \
-                    --data-urlencode "nom=$NAME" \
-                    "$maison" 2>&1
+#home
+/usr/bin/curl -G -s --data-urlencode "from=$who" \
+                    --data-urlencode "name=$NAME" \
+                    "$home" 2>&1

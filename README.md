@@ -1,28 +1,42 @@
-## Synchro automatique seedbox/maison avec lftp
+## Sync rtorrent seedbox and home with lftp
 
-Téléchargement ftp des contenus de seedbox vers la maison.
+Automatic ftp downloading of seedbox content to home server without additional software installed on seedbox (because sometimes we can't).
 
-Principe : 3 scripts shell communiquent entre eux pour déclencher la synchro à chaque fois qu'un torrent se termine.
+Principle : 3 shell scripts communicate to each other to fetch files each time a torrent is downloaded.
 
-__notify__ est sur la/les seedbox, __netcat__ et __recup__ sont sur le pc/serveur à la maison.
+__notify.Sh__ is on seedbox, __listener.sh__ and __fetcher.sh__ are on server/nas at home.
 
-Fonctionne avec lftp. Testé sur LibreElec 8.2 et 9.
+__lftp__ is required on home server.
 
 ### notify.sh
 
-rtorrent exécute notify.sh à la fin de chaque téléchargement torrent (1 ligne ajoutée à rtorrent.rc)
+rtorrent executes notify.sh each time a torrent download completes (1 line added to rtorrent.rc)
 
-notify crée un fichier .histo déclarant le torrent complété puis envoie une requête http à la maison, lue par netcat.sh
+notify creates a .histo file declaring the completed torrent then sends a http request to home server, read by listener.sh
 
-### netcat.sh
+### listener.sh
 
-netcat ouvre un port sur la machine maison en attente d'une requête http
+It opens a port on home server and waits for http request from notify.sh
 
-à la réception d'une requête http définie, netcat lance recup.sh
+Upon http request reception, listener runs fetcher.sh
 
-### recup.sh
+This script can be replaced by a cron job running fetcher.sh every x minutes if you prefer.
 
-lancé par netcat.sh (ou à la main ou par cron si on veux), il se connecte en ftp à la seedbox concernée, vérifie si des téléchargements sont complétés (présence de fichiers .histo) et les rapatrie en ftp.
+### fetcher.sh
 
-Une notification est envoyée (slack ou telegram) à chaque torrent rapatrié. Pas de connexion inutile au serveur toutes les x heures pour "vérifier", la connexion ftp est déclenchée uniquement si un téléchargement se termine sur la seedbox.
-Capable d'utiliser les protocoles ftp, ftps, sftp et de gérer plusieurs seedbox.
+Launched by listener.sh (or manually or with cron job if you wish), it connects to seedbox through ftp, checks if there are completed torrents and fetch them.
+
+A notification is sent (slack or telegram) for each torrent fetched and to library softwares like Medusa or Radarr fom import. No need to "poll" seedbox every x minutes for new files, ftp connexion is triggered only if a torrent is completed on seedbox.
+
+It works with protocols ftp, ftps, sftp and can handle many seedboxes.
+If there is network problem or if server is down, it will fetch torrents later.
+
+### Setup
+
+1. Edit config.yml and the first lines of notify.sh and fetcher.sh
+2. Make sure you have lftp on home server
+3. Choose a connexion port for listener.sh and check that it can be reached by notify.sh (maybe port forwarding needed)
+3. Copy notify.sh to seedbox and add this edited line in .rtorrent.rc configfile:
+  `method.set_key = event.download.finished,notif,"execute2={/home/***/notify.sh,$d.hash=,$d.base_path=}"`
+4. Restart rtorrent
+5. Run listener.sh (or if you prefer you can run fetcher.sh periodically with a cron job)

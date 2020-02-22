@@ -1,0 +1,26 @@
+#config.yml for fetcher.sh
+#if needed, add protocol before ftp_host and :port afterward
+
+notif:
+  # 1 to enable, 0 to disable
+  slack: 0
+  telegram: 1
+slack:
+  hook_url: 'https://hooks.slack.com/services/xxxxxx'
+  botname: 'Home server'
+  boticon: ':clapper:'
+telegram:
+  token: 'xxx:xxxxx'
+  chat_id: 'xxxx'
+#change seedbox name corresponding with the one in notify.sh
+seedbox_name_1:
+  usr: 'johndoe'
+  pwd: '123456'
+  ftp_host: 'serv.seedbox1.com'
+  ftp_root: '/home/johndoe/'
+other_seedbox_name:
+  usr: 'john47'
+  pwd: 'abcdef'
+  ftp_host: 's1.seed.com:5757'
+  ftp_root: '/home/john47/'
+#as many seedbox as you want :)
