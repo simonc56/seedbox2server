@@ -32,7 +32,7 @@ NAME=${FROM##*/}
 
 # write .hst file
 now="$(date +%Y.%m.%d-%Hh%Mm%S)"
-echo $FROM > "$histo/${qui}_${now}_$HASH.hst"
+echo "$FROM" > "$histo/${qui}_${now}_$HASH.hst"
 
 #call home (will trigger listener.sh)
 /usr/bin/curl -G -s --data-urlencode "from=$who" \
