@@ -153,10 +153,10 @@ while true ; do
     boticon="\\\"icon_emoji\\\":\\\"$slack_boticon\\\","
     payload="payload={$boticon$botname\\\"text\\\":\\\"$text\\\"}"
     if [ $notif_slack == 1 ] ; then
-        echo "!curl -s --data-urlencode \"$payload\" \"$slack_hook_url\" > /dev/null 2>> \"$LOG\"" >> $b2
+      echo "!curl -s --data-urlencode \"$payload\" \"$slack_hook_url\" > /dev/null 2>> \"$LOG\"" >> $b2
     fi
     if [ $notif_telegram == 1 ] ; then
-        echo "!curl -s -X POST https://api.telegram.org/bot$telegram_token/sendMessage -d chat_id=$telegram_chat_id -d text=\"$text\" > /dev/null 2>> \"$LOG\"" >> $b2
+      echo "!curl -s -X POST https://api.telegram.org/bot$telegram_token/sendMessage -d chat_id=$telegram_chat_id -d text=\"$text\" > /dev/null 2>> \"$LOG\"" >> $b2
     fi
     #not removing hst because next loop would not work, rename it as .hstok
     echo "!mv \"$file\" \"${file}ok\"" >> $b2
@@ -185,7 +185,12 @@ while true ; do
       #hst_file=${file##*/} v1.2.0: to remove
       mv "$file" "$file"err
       echo "$hour ---> $who : stopped transfer" >> "$LOG"
-      curl -s --data-urlencode "payload={\"icon_emoji\":\":heavy_exclamation_mark:\",\"username\":\"Error\",\"text\":\"$guilty ($who)\"}" "$slack_hook_url" > /dev/null 2>&1
+      if [ $notif_slack == 1 ] ; then
+        curl -s --data-urlencode "payload={\"icon_emoji\":\":heavy_exclamation_mark:\",\"username\":\"Error\",\"text\":\"$guilty ($who)\"}" "$slack_hook_url" > /dev/null 2>&1
+      fi
+      if [ $notif_telegram == 1 ] ; then
+        curl -s -X POST https://api.telegram.org/bot$telegram_token/sendMessage -d chat_id=$telegram_chat_id -d text="Error: $guilty ($who)" > /dev/null 2>&1
+      fi
       break # error only on first remaining .hst
     fi
   done
