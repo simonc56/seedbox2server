@@ -211,9 +211,8 @@ while true ; do
     DIR=${DIR##*/}
     #DIR is maybe "torrents"
     STORE="$BASE_STORE/$DIR"
-    SPEC_NAME=$(echo "$NAME" | sed 's/[^[:alnum:]]/\\&/g')
     #for information, we log torrent size
-    tor_size=$(du -sch "$STORE/$SPEC_NAME" | awk 'END{print $1}')
+    tor_size=$(du -sch "$STORE/$NAME" | awk 'END{print $1}')
     echo "$tor_size : $NAME" >> "$LOG"
     # Postprocessing to Medusa if tv and copy if movie
     if [ "$DIR" == "tv" ] ; then
