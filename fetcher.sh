@@ -221,23 +221,20 @@ while true ; do
       if [ -d "$STORE/$NAME" ] ; then
         STORE="$STORE/$NAME"
       fi
-      # if there are folders inside, give them too
-      for folder in "$STORE"/* "$STORE" ; do
-        if [ -d "$fold" ] ; then
-          # send to medusa which will do a 'move'
-          NAME=${fol##*/}
-          echo "curl:" "nzbName=$NAME&proc_dir=$folder&proc_type=manual"
-          curl -G -s -S --data-urlencode "nzbName=$NAME" \
-                        --data-urlencode "proc_dir=$folder" \
-                        --data-urlencode "proc_type=manual" \
-                        --data-urlencode "quiet=1" \
-                        http://localhost:18081/medusa/home/postprocess/processEpisode 2>&1
-          #if [ $? -eq 0 ] && [ "$fold" != "$BASE_STORE/tv" ] ; then
-            # if curl send to medusa is success, we remove the folder
-            #rm -r "$folder"
-          #fi
-        fi
-      done
+      # send to medusa which will do a 'move'
+      NAME=${fol##*/}
+      # map docker path if needed then use it in curl command
+      #docker_fold="/tv${STORE#'/media/tera'}"
+      echo "curl:" "nzbName=$NAME&proc_dir=$STORE&proc_type=manual"
+      curl -G -s -S --data-urlencode "nzbName=$NAME" \
+                    --data-urlencode "proc_dir=$STORE" \
+                    --data-urlencode "proc_type=manual" \
+                    --data-urlencode "quiet=1" \
+                    http://localhost:18081/medusa/home/postprocess/processEpisode 2>&1
+      #if [ $? -eq 0 ] && [ "$STORE" != "$BASE_STORE/tv" ] ; then
+        # if curl send to medusa is success, we remove the folder
+        #rm -r "$STORE"
+      #fi
     elif [ "$DIR" == "movies" ] ; then
       nb_kodi=$((nb_kodi+1))
       #move only movie and subtitles
