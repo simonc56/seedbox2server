@@ -16,10 +16,13 @@
 # 27           v1.1 resoud bug symlink avec movie_file_nopath
 # 15-sept-2019 v1.2 compatible python3 (py2_encode)
 # 12-octo-2019 v1.3 rescan placé en dernier car put monitored=false marche pas
+# 05-juin-2021 v1.4 traduction docker_path en host_path car radarr passe dans container docker
 
 host = "192.168.0.4"
 port = "7878"
 apikey = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" #apikey de radarr
+docker_path = "/movies"
+host_path = "/storage/radarr"
 
 import os, sys, subprocess, json, datetime
 
@@ -35,7 +38,7 @@ def py2_decode(s, encoding='utf-8'):
         s = s.decode(encoding)
     return s
 
-root_url = "http://{}:{}/radarr/api/".format(host, port)
+root_url = "http://{}:{}/radarr/api/v3/".format(host, port)
 movie_file = py2_decode(sys.argv[1])
 movie_hash = sys.argv[2]
 movie_id = False
@@ -116,11 +119,12 @@ if movie_id:
         movie_file_nopath = movie_file.split("/").pop()
         movie_data = json.loads(get_movie(str(movie_id)))
         print("donnees radarr du film [" + py2_encode(movie_data["title"]) + "] bien recuperees")
-        if not os.path.exists(movie_data['path']):
-                os.mkdir(movie_data['path'])
-        if not os.path.islink(movie_data['path'] + '/' + movie_file_nopath):
-                os.symlink(movie_file, movie_data['path'] + '/' + movie_file_nopath)
-                print("lien symbolique cree : " + py2_encode(movie_data['path']) + "/" + py2_encode(movie_file_nopath))
+        movie_path = movie_data['path'].replace(docker_path, host_path)
+        if not os.path.exists(movie_path):
+                os.mkdir(movie_path)
+        if not os.path.islink(movie_path + '/' + movie_file_nopath):
+                os.symlink(movie_file, movie_path + '/' + movie_file_nopath)
+                print("lien symbolique cree : " + py2_encode(movie_path) + "/" + py2_encode(movie_file_nopath))
         #je le passe en non-monitored (on ne cherche plus à le telecharger)
         movie_data["monitored"] = False
         #et je renvoie les données à Radarr
