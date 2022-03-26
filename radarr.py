@@ -44,148 +44,148 @@ movie_file = py2_decode(sys.argv[1])
 movie_hash = sys.argv[2]
 movie_id = False
 if len(sys.argv) > 3:
-        movie_id = int(sys.argv[3])
-        print("film numero: " + str(movie_id) + " pas besoin de recup l'historique")
+    movie_id = int(sys.argv[3])
+    print("film numero: " + str(movie_id) + " pas besoin de recup l'historique")
 
 
 if PY2:
-        #python2
-        from urllib2 import Request, urlopen
-        from urllib import urlencode
+    #python2
+    from urllib2 import Request, urlopen
+    from urllib import urlencode
 else:
-        #python3
-        from urllib.request import Request, urlopen
-        from urllib.parse import urlencode
+    #python3
+    from urllib.request import Request, urlopen
+    from urllib.parse import urlencode
 
 class PutRequest(Request):
-        '''class to handling putting with urllib'''
-        def get_method(self, *args, **kwargs):
-                return 'PUT'
+    '''class to handling putting with urllib'''
+    def get_method(self, *args, **kwargs):
+        return 'PUT'
 
 def get_history():
-        url_arg = {
-                'page': 1,
-                'pageSize': 10,
-                'apikey': apikey
-        }
-        req = Request(root_url+"history/?"+urlencode(url_arg))
-        response = urlopen(req).read()
-        return response
+    url_arg = {
+        'page': 1,
+        'pageSize': 10,
+        'apikey': apikey
+    }
+    req = Request(root_url + "history/?" + urlencode(url_arg))
+    response = urlopen(req).read()
+    return response
         
 def get_movie(movie_num):
-        url_arg = {
-                'apikey': apikey
-        }
-        req = Request(root_url+"movie/"+movie_num+"?"+urlencode(url_arg))
-        response = urlopen(req).read()
-        return response
+    url_arg = {
+        'apikey': apikey
+    }
+    req = Request(root_url + "movie/" + movie_num + "?" + urlencode(url_arg))
+    response = urlopen(req).read()
+    return response
 
 def rescan_movie(movie_num, movie_title):
-        url_arg = {
-                'apikey': apikey
-        }
-        command_data = {
-                "name": "RescanMovie",
-                "movieId": movie_num
-        }
-        req = Request(root_url+"command?"+urlencode(url_arg), json.dumps(command_data, encoding='utf-8'))
-        req.get_method = lambda: 'POST'
-        req.add_header('Content-Type', 'application/json')
-        response = urlopen(req).read()
-        return response
+    url_arg = {
+        'apikey': apikey
+    }
+    command_data = {
+        "name": "RescanMovie",
+        "movieId": movie_num
+    }
+    req = Request(root_url + "command?" + urlencode(url_arg), json.dumps(command_data, encoding='utf-8'))
+    req.get_method = lambda: 'POST'
+    req.add_header('Content-Type', 'application/json')
+    response = urlopen(req).read()
+    return response
         
 def put_movie(data):
-        url_arg = {
-                'apikey': apikey
-        }
-        req = Request(root_url+"movie?"+urlencode(url_arg), py2_encode(json.dumps(data, encoding='utf-8')))
-        req.get_method = lambda: 'PUT'
-        req.add_header('Content-Type', 'application/json')
-        response = urlopen(req).read()
-        return response
+    url_arg = {
+        'apikey': apikey
+    }
+    req = Request(root_url + "movie?" + urlencode(url_arg), py2_encode(json.dumps(data, encoding='utf-8')))
+    req.get_method = lambda: 'PUT'
+    req.add_header('Content-Type', 'application/json')
+    response = urlopen(req).read()
+    return response
 
 def get_queuedetails(movie_num):
-        url_arg = {
-                'apikey': apikey,
-                'movieId': movie_num
-        }
-        req = Request(root_url+"queue/details?"+urlencode(url_arg))
-        response = urlopen(req).read()
-        return response
+    url_arg = {
+        'apikey': apikey,
+        'movieId': movie_num
+    }
+    req = Request(root_url + "queue/details?" + urlencode(url_arg))
+    response = urlopen(req).read()
+    return response
 
 def get_manualimport(movie_num, movie_folder="", download_id=""):
-        url_arg = {
-                'apikey': apikey,
-                'downloadId': download_id,
-                'movieId': movie_num,
-                'folder': movie_folder,
-                'filterExistingFiles': False
-        }
-        req = Request(root_url+"manualimport?"+urlencode(url_arg))
-        response = urlopen(req).read()
-        return response
+    url_arg = {
+        'apikey': apikey,
+        'downloadId': download_id,
+        'movieId': movie_num,
+        'folder': movie_folder,
+        'filterExistingFiles': False
+    }
+    req = Request(root_url + "manualimport?" + urlencode(url_arg))
+    response = urlopen(req).read()
+    return response
 
 def post_manualimport(file_list):
-        url_arg = {
-                'apikey': apikey
-        }
-        data = {
-            "name": "ManualImport",
-            "files": file_list,
-            "importMode": "move"
-        }
-        req = Request(root_url+"command?"+urlencode(url_arg), json.dumps(data, encoding='utf-8'))
-        req.get_method = lambda: 'POST'
-        req.add_header('Content-Type', 'application/json;charset=utf-8')
-        response = urlopen(req).read()
-        return response
+    url_arg = {
+        'apikey': apikey
+    }
+    data = {
+        "name": "ManualImport",
+        "files": file_list,
+        "importMode": "move"
+    }
+    req = Request(root_url + "command?" + urlencode(url_arg), json.dumps(data, encoding='utf-8'))
+    req.get_method = lambda: 'POST'
+    req.add_header('Content-Type', 'application/json;charset=utf-8')
+    response = urlopen(req).read()
+    return response
 
 # si besoin je récupère l'historique des films que Radarr a envoyé à rtorrent pour retrouver l'id corresp
 if not movie_id:
-        print("radarr.py : transmission a radarr de " + py2_encode(movie_file))
-        hist = json.loads(get_history())["records"]
-        #print("historique radarr recupere, contient " + str(len(hist)) + " lignes")
-        # je cherche le numéro de film correspondant à notre film
-        for movie in hist:
-                if movie["eventType"] == "grabbed" and movie["downloadId"] == movie_hash: # trouvé!
-                        movie_id = movie["movieId"]
-                        #size = movie["data"]["size"]
-                        print("film correspondant (torrent hash=" + movie_hash + ") trouve dans radarr, id=" + str(movie_id))
-                        break
+    print("radarr.py : transmission a radarr de " + py2_encode(movie_file))
+    hist = json.loads(get_history())["records"]
+    #print("historique radarr recupere, contient " + str(len(hist)) + " lignes")
+    # je cherche le numéro de film correspondant à notre film
+    for movie in hist:
+        if movie["eventType"] == "grabbed" and movie["downloadId"] == movie_hash: # trouvé!
+            movie_id = movie["movieId"]
+            #size = movie["data"]["size"]
+            print("film correspondant (torrent hash=" + movie_hash + ") trouve dans radarr, id=" + str(movie_id))
+            break
 # si j'ai un id de film correspondant dans radarr, je maj radarr
 if movie_id:
-        movie_file_nopath = movie_file.split("/").pop()
-        movie_data = json.loads(get_movie(str(movie_id)))
-        print("donnees radarr du film [" + py2_encode(movie_data["title"]) + "] bien recuperees")
-        #je recupere le nom de fichier attendu par radarr (parfois différent si j'ai renommé) et le répertoire attendu
-        movie_queue = json.loads(get_queuedetails(str(movie_id)))
-        expected_filename = movie_queue[0].get('title')
-        movie_path = movie_queue[0].get('outputPath').replace(docker_path, host_path).replace(expected_filename, "")
-        if not os.path.exists(movie_path):
-                os.mkdir(movie_path)
-        if not os.path.islink(movie_path + expected_filename):
-                os.symlink(movie_file, movie_path + expected_filename)
-                print("lien symbolique cree : " + py2_encode(movie_path) + py2_encode(expected_filename))
-        #je le passe en non-monitored (on ne cherche plus à le telecharger)
-        movie_data["monitored"] = False
-        #et je renvoie les données à Radarr
-        resp = put_movie(movie_data)
-        #manualimport avec le downloadId pour purger l'historique de fichiers grabbed par radarr
-        fichiers = json.loads(get_manualimport(movie_num=movie_id, download_id=movie_hash))
-        if fichiers:
-            for fich in fichiers:
-                if fich["relativePath"] == expected_filename:
-                    fich["movieId"] = fich["movie"]["id"]
-                    fich["downloadId"] = movie_hash
-                else:
-                    print("fichier attendu:" + py2_encode(expected_filename) + " fichier trouve:" + py2_encode(fich["relativePath"]))
-            cmd_resp = json.loads(post_manualimport(fichiers))
-            #puis radarr scanne le rep pour trouver le fichier (deprecated le 23 mars 2022)
-            #cmd_resp = json.loads(rescan_movie(movie_id, movie_data['title']))
-            print("monitored=False envoye, commande de manualImport du film envoyée a radarr, command id=" + str(cmd_resp['id']))
-        else:
-            print("pas de fichier correspondant trouve dans " + py2_encode(movie_path))
-            print("fichier attendu: " + py2_encode(expected_filename))
+    movie_file_nopath = movie_file.split("/").pop()
+    movie_data = json.loads(get_movie(str(movie_id)))
+    print("donnees radarr du film [" + py2_encode(movie_data["title"]) + "] bien recuperees")
+    #je recupere le nom de fichier attendu par radarr (parfois différent si j'ai renommé) et le répertoire attendu
+    movie_queue = json.loads(get_queuedetails(str(movie_id)))
+    expected_filename = movie_queue[0].get('title')
+    movie_path = movie_queue[0].get('outputPath').replace(docker_path, host_path).replace(expected_filename, "")
+    if not os.path.exists(movie_path):
+        os.mkdir(movie_path)
+    if not os.path.islink(movie_path + expected_filename):
+        os.symlink(movie_file, movie_path + expected_filename)
+        print("lien symbolique cree : " + py2_encode(movie_path) + py2_encode(expected_filename))
+    #je le passe en non-monitored (on ne cherche plus à le telecharger)
+    movie_data["monitored"] = False
+    #et je renvoie les données à Radarr
+    resp = put_movie(movie_data)
+    #manualimport avec le downloadId pour purger l'historique de fichiers grabbed par radarr
+    fichiers = json.loads(get_manualimport(movie_num=movie_id, download_id=movie_hash))
+    if fichiers:
+        for fich in fichiers:
+            if fich["relativePath"] == expected_filename:
+                fich["movieId"] = fich["movie"]["id"]
+                fich["downloadId"] = movie_hash
+            else:
+                print("fichier attendu:" + py2_encode(expected_filename) + " fichier trouve:" + py2_encode(fich["relativePath"]))
+        cmd_resp = json.loads(post_manualimport(fichiers))
+        #puis radarr scanne le rep pour trouver le fichier (deprecated le 23 mars 2022)
+        #cmd_resp = json.loads(rescan_movie(movie_id, movie_data['title']))
+        print("monitored=False envoye, commande de manualImport du film envoyée a radarr, command id=" + str(cmd_resp['id']))
+    else:
+        print("pas de fichier correspondant trouve dans " + py2_encode(movie_path))
+        print("fichier attendu: " + py2_encode(expected_filename))
 else:
         print("film introuvable dans radarr avec le hash torrent")
         
