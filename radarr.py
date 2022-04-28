@@ -137,20 +137,27 @@ for movie in queue:
         movie_id = movie.get("movieId")
         #size = movie["data"]["size"]
         #je recupere le nom de fichier attendu par radarr (parfois différent si j'ai renommé) et le répertoire attendu
-        expected_filename = movie.get('title')
-        movie_path = movie.get('outputPath').replace(docker_path, host_path).replace(expected_filename, "")  # /storage/radarr/import/
-        print(py2_encode(expected_filename) + " trouvé dans file d'attente radarr hash=" + str(movie_hash) + " id=" + str(movie_id))
+        #outputPath est le chemin attendu par radarr donc après application du mappage de chemin distant (paramètres radarr > client téléch.)
+        full_movie_path = movie.get('outputPath').replace(docker_path, host_path)  # /storage/radarr/import/Mon.Film.mkv
+        expected_filename = os.path.basename(full_movie_path)  # Mon.Film.mkv
+        movie_path = os.path.dirname(full_movie_path)  # # /storage/radarr/import
+        extension = os.path.splitext(movie_file)[1]
+        # cas particulier: si on a un répertoire en outputPath (cas des torrents avec plusieurs fichiers)
+        if os.path.splitext(expected_filename)[1] != extension:
+            movie_path = full_movie_path
+            expected_filename = os.path.basename(movie_file)
+            full_movie_path = os.path.join(movie_path, expected_filename)
+        print(py2_encode(movie.get("title")) + " trouvé dans file d'attente radarr hash=" + str(movie_hash) + " id=" + str(movie_id))
         break
 # si j'ai un id de film correspondant dans radarr, je maj radarr
 if movie_id:
     movie_data = json.loads(get_movie(str(movie_id)))
     print("donnees radarr du film [" + py2_encode(movie_data["title"]) + "] bien recuperees")
-    #movie_path = movie_data['path'].replace(docker_path, host_path) + '/'
     if not os.path.exists(movie_path):
         os.mkdir(movie_path)
-    if not os.path.islink(movie_path + expected_filename):
-        os.symlink(movie_file, movie_path + expected_filename)
-        print("lien symbolique cree : " + py2_encode(movie_path) + py2_encode(expected_filename))
+    if not os.path.islink(full_movie_path):
+        os.symlink(movie_file, full_movie_path)
+        print("lien symbolique créé : " + py2_encode(full_movie_path))
     #je le passe en non-monitored (on ne cherche plus à le telecharger)
     movie_data["monitored"] = False
     #et je renvoie les données à Radarr
