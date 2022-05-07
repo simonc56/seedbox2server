@@ -4,7 +4,7 @@
 # puisque Radarr ne sait pas gérer les films dans un unique répertoire, le post-processing est fait à la main
 # par un script perso (recup.sh) qui rapatrie le film en bonne place sur le HTPC.
 
-# objectif de ce script déclenché par recup.sh : créer un symlink du film dans le répertoire attendu par radarr en fin de dl
+# objectif de ce script déclenché par recup.sh : créer un symlink/hardlink du film dans le répertoire attendu par radarr en fin de dl
 # puis faire un import manuel de ce fichier par l'API Radarr, et enfin ne plus monitorer ce film
 
 # arguments : 1. final_filename_with_path, fichier d'origine qui sert à créer le symlink
@@ -24,6 +24,7 @@ port = "7878"
 apikey = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" #apikey de radarr
 docker_path = "/movies"
 host_path = "/storage/radarr"
+hardlink = False
 
 import os, sys, json
 from time import sleep
@@ -111,14 +112,14 @@ def get_manualimport(movie_num, movie_folder="", download_id=""):
     response = urlopen(req).read()
     return response
 
-def post_manualimport(file_list):
+def post_manualimport(file_list, mode="move"):
     url_arg = {
         'apikey': apikey
     }
     data = {
         "name": "ManualImport",
         "files": file_list,
-        "importMode": "move"
+        "importMode": mode  # move ou copy
     }
     req = Request(root_url + "command?" + urlencode(url_arg), json.dumps(data, encoding='utf-8'))
     req.get_method = lambda: 'POST'
@@ -155,9 +156,12 @@ if movie_id:
     print("donnees radarr du film [" + py2_encode(movie_data["title"]) + "] bien recuperees")
     if not os.path.exists(movie_path):
         os.mkdir(movie_path)
-    if not os.path.islink(full_movie_path):
+    if not hardlink and not os.path.islink(full_movie_path):
         os.symlink(movie_file, full_movie_path)
         print("lien symbolique créé : " + py2_encode(full_movie_path))
+    if hardlink and not os.path.isfile(full_movie_path):
+        os.link(movie_file, full_movie_path)
+        print("lien physique créé : " + py2_encode(full_movie_path))
     #je le passe en non-monitored (on ne cherche plus à le telecharger)
     movie_data["monitored"] = False
     #et je renvoie les données à Radarr
