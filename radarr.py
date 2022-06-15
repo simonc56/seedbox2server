@@ -17,7 +17,7 @@
 # 15-sept-2019 v1.2 compatible python3 (py2_encode)
 # 12-octo-2019 v1.3 rescan placé en dernier car put monitored=false marche pas
 # 05-juin-2021 v1.4 traduction docker_path en host_path car radarr passe dans container docker
-# 23-mars-2022 v1.5 manualImport remplace RescanMovie, films passent par le répertoire "mappage chemin distant" de radarr, surveillance telech activé dans radarr (interval 0)
+# 23-mars-2022 v1.5 manualImport remplace RescanMovie, films passent par le répertoire "mappage chemin distant" de radarr, surveillance telech activé dans radarr avec interval maxi (120)
 
 host = "192.168.0.4"
 port = "7878"
@@ -128,6 +128,7 @@ def post_manualimport(file_list, mode="move"):
     return response
 
 # refresh pour passer à l'état "importPending" les "grabbed" de la file d'attente qui sont finis de télécharger
+# utile si je mets l'interval de refresh de radarr au max (120min)
 post_refreshmonitored()
 # je récupère la liste des films que Radarr a envoyé à rtorrent pour retrouver l'id corresp
 print("radarr.py : transmission à radarr de " + py2_encode(movie_file))
