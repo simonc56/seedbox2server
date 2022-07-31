@@ -18,6 +18,7 @@
 # 12-octo-2019 v1.3 rescan placé en dernier car put monitored=false marche pas
 # 05-juin-2021 v1.4 traduction docker_path en host_path car radarr passe dans container docker
 # 23-mars-2022 v1.5 manualImport remplace RescanMovie, films passent par le répertoire "mappage chemin distant" de radarr, surveillance telech activé dans radarr avec interval maxi (120)
+# 31-juil-2022 v1.6 gestion des messages d'erreur dans queue et manualImport
 
 host = "192.168.0.4"
 port = "7878"
@@ -137,6 +138,9 @@ queue = json.loads(get_queuedetails())
 for movie in queue:
     if movie["status"] == "completed" and movie["downloadId"] == movie_hash: # "trackedDownloadState"="importPending" trouvé!
         movie_id = movie.get("movieId")
+        if movie.get("statusMessages"):
+            for msg in movie.get("statusMessages"):
+                print("Status Message: " + msg["messages"][0])
         #size = movie["data"]["size"]
         #je recupere le nom de fichier attendu par radarr (parfois différent si j'ai renommé) et le répertoire attendu
         #outputPath est le chemin attendu par radarr donc après application du mappage de chemin distant (paramètres radarr > client téléch.)
@@ -174,6 +178,11 @@ if movie_id:
             if fich["relativePath"] == expected_filename:
                 fich["movieId"] = fich["movie"]["id"]
                 fich["downloadId"] = movie_hash
+                for lng in fich["languages"]:
+                    print("Language: " + lng["id"] + " " + lng["name"])
+                print("Qualité: " + fich["quality"]["quality"]["id"] + " " + fich["quality"]["quality"]["name"])
+                if fich.get("rejections"):
+                    print("Import impossible: " + fich["rejections"][0]["reason"])
             else:
                 print("fichier trouvé " + py2_encode(fich["relativePath"]) + " mais ne correspond pas")
         cmd_resp = json.loads(post_manualimport(fichiers))
