@@ -179,10 +179,10 @@ if movie_id:
                 fich["movieId"] = fich["movie"]["id"]
                 fich["downloadId"] = movie_hash
                 for lng in fich["languages"]:
-                    print("Language: " + lng["id"] + " " + lng["name"])
-                print("Qualité: " + fich["quality"]["quality"]["id"] + " " + fich["quality"]["quality"]["name"])
+                    print("Language: " + str(lng["id"]) + " " + py2_encode(lng["name"]))
+                print("Qualité: " + str(fich["quality"]["quality"]["id"]) + " " + py2_encode(fich["quality"]["quality"]["name"]))
                 if fich.get("rejections"):
-                    print("Import impossible: " + fich["rejections"][0]["reason"])
+                    print("Import impossible: " + py2_encode(fich["rejections"][0]["reason"]))
             else:
                 print("fichier trouvé " + py2_encode(fich["relativePath"]) + " mais ne correspond pas")
         cmd_resp = json.loads(post_manualimport(fichiers))
