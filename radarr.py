@@ -20,13 +20,14 @@
 # 23-mars-2022 v1.5 manualImport remplace RescanMovie, films passent par le répertoire "mappage chemin distant" de radarr, surveillance telech activé dans radarr avec interval maxi (120)
 # 31-juil-2022 v1.6 gestion des messages d'erreur dans queue et manualImport
 # 11-juin-2023 v1.7 compatible python 3 uniquement
+# 09-déce-2024 v1.8 chown root + symlink pour docker et non pas host (radarr 5.15.1.9463 follow symlink)
 
 host = "192.168.0.4"
 port = "7878"
 apikey = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" #apikey de radarr
 docker_path = "/movies"
 host_path = "/storage/radarr"
-hardlink = False
+hardlink = False # pas testé avec True, chemin fullpath ne marche pas avec radarr dans docker car volume relatif
 
 import os, sys, json
 from time import sleep
@@ -123,6 +124,10 @@ def post_manualimport(file_list, mode="move"):
 post_refreshmonitored()
 # je récupère la liste des films que Radarr a envoyé à rtorrent pour retrouver l'id corresp
 print("radarr.py : transmission à radarr de " + movie_file)
+try:
+    os.chown(movie_file, 0, 0) # rtorrent a créé le fichier en user nobody:nogroup, je remets root:root
+except:
+    print("Impossible de changer le proprietaire du fichier")
 queue = json.loads(get_queuedetails())
 # je cherche le numéro de film correspondant à notre film
 for movie in queue:
@@ -134,9 +139,13 @@ for movie in queue:
         #size = movie["data"]["size"]
         #je recupere le nom de fichier attendu par radarr (parfois différent si j'ai renommé) et le répertoire attendu
         #outputPath est le chemin attendu par radarr donc après application du mappage de chemin distant (paramètres radarr > client téléch.)
+        #Mappage radarr :  Dossier distant:/home1/usr00505/torrents/films/    Chemin local:/media/downloads/import/
+        #                  Dossier distant:/var/media/tera/downloads/films/  Chemin local:/media/downloads/import/
+        #Dossier racine de films dans radarr : /media/movies (soit /media/tera/movies)
         full_movie_path = movie.get('outputPath').replace(docker_path, host_path)  # /storage/radarr/import/Mon.Film.mkv
+        movie_file_from_docker = movie_file.replace(host_path, docker_path)  # /media/downloads/films/Mon.Film.mkv
         expected_filename = os.path.basename(full_movie_path)  # Mon.Film.mkv
-        movie_path = os.path.dirname(full_movie_path)  # # /storage/radarr/import
+        movie_path = os.path.dirname(full_movie_path)   # /media/tera/downloads/import
         extension = os.path.splitext(movie_file)[1]
         # cas particulier: si on a un répertoire en outputPath (cas des torrents avec plusieurs fichiers)
         if os.path.splitext(expected_filename)[1] != extension:
@@ -152,7 +161,8 @@ if movie_id:
     if not os.path.exists(movie_path):
         os.mkdir(movie_path)
     if not hardlink and not os.path.islink(full_movie_path):
-        os.symlink(movie_file, full_movie_path)
+        # os.symlink(srcFile, newFile)
+        os.symlink(movie_file_from_docker, full_movie_path) # le symlink ne fonctionne que pour radarr dans docker
         print("lien symbolique créé : " + full_movie_path)
     if hardlink and not os.path.isfile(full_movie_path):
         os.link(movie_file, full_movie_path)
